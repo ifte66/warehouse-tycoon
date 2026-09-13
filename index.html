@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Warehouse Tycoon — Site Feasibility Digital Twin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: {
+  colors: { ink:'#FAF9F5', panel:'#F2F0E9', panel2:'#FFFFFF', line:'#E4E0D3', amber:'#C96442', amberdim:'#F0E2D8', steel:'#3E7CA6', ok:'#2F7D46', warn:'#C13A3A', mut:'#847C6C' },
+  fontFamily: { mono:['ui-monospace','SFMono-Regular','Menlo','Consolas','monospace'], sans:['Inter','Segoe UI','system-ui','-apple-system','sans-serif'], disp:['Lora','Georgia','serif'] }
+}}}
+</script>
+<style>
+  html,body{background:#FAF9F5;color:#3A362C;font-family:Inter,'Segoe UI',system-ui,sans-serif;overscroll-behavior:none;touch-action:manipulation;-webkit-text-size-adjust:100%}
+  #simCanvas{touch-action:none}
+  #tabbar .tab-btn{touch-action:manipulation}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .disp{font-family:Lora,Georgia,serif}
+  .num{font-variant-numeric:tabular-nums}
+  .hazard{background:linear-gradient(135deg,#C96442,#E09A72);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)}
+  .hazard-thin{background:linear-gradient(90deg,#C96442,rgba(201,100,66,0));height:3px;border-radius:2px}
+  ::-webkit-scrollbar{width:9px;height:9px} ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#D9D4C5;border-radius:5px} ::-webkit-scrollbar-thumb:hover{background:#C4BDA9}
+  input[type=range]{-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;background:#E4E0D3;outline:none;width:100%}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:#C96442;border:2.5px solid #FAF9F5;box-shadow:0 1px 4px rgba(60,40,20,.3);cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#C96442;border:2.5px solid #FAF9F5;cursor:pointer}
+  input[type=number],input[type=text],select{background:#FFFFFF;border:1px solid #DAD5C6;border-radius:8px;color:#3A362C;padding:4px 8px;font-size:12px;outline:none;width:100%;transition:border-color .12s, box-shadow .12s}
+  input:focus,select:focus{border-color:#C96442;box-shadow:0 0 0 3px rgba(201,100,66,.14)}
+  input[type=checkbox]{accent-color:#C96442;width:15px;height:15px}
+  .btn{background:#FFFFFF;border:1px solid #DAD5C6;border-radius:9px;padding:5px 13px;font-size:12px;cursor:pointer;transition:all .12s;color:#3A362C}
+  .btn:hover{border-color:#C96442;color:#9C4B26;background:#FBF4EE}
+  .btn:focus-visible{outline:2px solid #C96442;outline-offset:1px}
+  .btn-amber{background:#C96442;color:#fff;font-weight:600;border:1px solid #C96442}
+  .btn-amber:hover{background:#B4552F;color:#fff;border-color:#B4552F}
+  .btn[disabled]{opacity:.4;cursor:not-allowed}
+  .tab-btn{padding:7px 14px;margin:5px 2px;font-size:12.5px;font-weight:500;color:#847C6C;border-radius:9px;cursor:pointer;white-space:nowrap;transition:all .12s}
+  .tab-btn:hover{color:#3A362C;background:#ECE8DC}
+  .tab-btn.active{color:#9C4B26;background:#F4E4D9;font-weight:600}
+  .kpi-cell{border-right:1px solid #E4E0D3;padding:5px 9px;min-width:84px}
+  @media(min-width:768px){.kpi-cell{padding:6px 12px;min-width:105px}}
+  .kpi-cell:last-child{border-right:none}
+  .card{background:#FFFFFF;border:1px solid #E4E0D3;border-radius:12px;box-shadow:0 1px 3px rgba(70,58,35,.05)}
+  .ovl{background:rgba(250,249,245,.93);border:1px solid #E4E0D3;border-radius:12px;box-shadow:0 6px 20px rgba(30,24,12,.28);backdrop-filter:blur(6px);color:#3A362C}
+  .lbl{font-size:10px;letter-spacing:.07em;color:#847C6C;text-transform:uppercase;font-weight:600}
+  .tl{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+  .tl-g{background:#2F7D46}.tl-y{background:#D89042}.tl-r{background:#C13A3A}
+  .loc-card{cursor:pointer;transition:all .15s}
+  .loc-card:hover{border-color:#C96442;transform:translateY(-2px);box-shadow:0 6px 16px rgba(70,58,35,.1)}
+  .loc-card.sel{border-color:#C96442;box-shadow:0 0 0 1.5px #C96442, 0 6px 20px rgba(201,100,66,.15)}
+  .adv-card{animation:slideIn .3s ease}
+  @keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  .blink{animation:pulse 1.4s infinite}
+  .report-doc{background:#FFFFFF;border:1px solid #E4E0D3;border-radius:12px}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);background:#2E2B23;color:#FAF9F5;padding:9px 18px;border-radius:10px;font-size:12.5px;opacity:0;pointer-events:none;transition:all .25s;z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media print{
+    body{background:#fff;color:#111}
+    header,#tabbar,#leftPanel,.no-print{display:none!important}
+    #stage{overflow:visible!important}
+    .report-doc{background:#fff;border:none;color:#111}
+    .report-doc .card{background:#fff;border-color:#ccc;color:#111}
+    .report-doc .lbl{color:#555}
+  }
+  @media (prefers-reduced-motion: reduce){ .adv-card,.blink{animation:none} }
+  .tooltip{position:relative}
+  td,th{padding:4px 8px;font-size:11px}
+  .seg{display:flex;gap:2px}.seg button{flex:1;padding:3px 6px;font-size:10.5px;background:#FFFFFF;border:1px solid #DAD5C6;color:#847C6C;cursor:pointer;transition:all .12s}
+  .seg button:hover{color:#3A362C}
+  .seg button.on{background:#C96442;color:#fff;font-weight:600;border-color:#C96442}
+  .seg button:first-child{border-radius:9px 0 0 9px}.seg button:last-child{border-radius:0 9px 9px 0}
+  .drawer-open{display:block!important;position:fixed;top:0;bottom:0;left:0;z-index:45;width:min(300px,85vw);box-shadow:12px 0 40px rgba(40,30,15,.28)}
+  #drawerBg{position:fixed;inset:0;background:rgba(46,43,35,.38);z-index:44}
+</style>
+</head>
+<body class="h-[100dvh] flex flex-col overflow-hidden text-sm">
+
+<!-- ══ HEADER ══ -->
+<header class="flex items-center gap-4 px-4 py-2 border-b border-line bg-panel flex-none">
+  <div class="flex items-center gap-2">
+    <div class="hazard w-7 h-7 rounded-lg flex items-center justify-center text-white text-[13px]">▦</div>
+    <div>
+      <div class="disp font-semibold text-[#2E2B23] text-[15px] leading-tight">Warehouse Tycoon</div>
+      <div class="text-[10.5px] text-mut leading-tight">Site feasibility digital twin</div>
+    </div>
+  </div>
+  <div class="hazard-thin flex-none w-8 self-center hidden md:block"></div>
+  <div class="text-[11.5px] text-mut hidden lg:flex items-center gap-3">
+    <span id="hdrLoc" class="text-steel">—</span>
+    <span id="hdrClock" class="num text-[#2E2B23]">DAY 1 · 06:00</span>
+    <span id="hdrDayPart" class="text-mut">☀ day</span>
+    <span id="hdrWeather" class="text-mut">clear</span>
+  </div>
+  <div class="ml-auto flex items-center gap-2">
+    <span class="hidden sm:flex items-center gap-2">
+    <label class="text-[11px] text-mut flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="seedToggle"> Repeatable run</label>
+    <input type="number" id="seedVal" value="42" class="!w-16 num text-[11px]" title="Random seed">
+    </span>
+    <button class="btn text-[11px]" id="btnHelp" title="Show guided tour">✦ Tour</button>
+  </div>
+</header>
+
+<!-- ══ KPI RIBBON ══ -->
+<div id="kpiRibbon" class="flex overflow-x-auto border-b border-line bg-ink flex-none"></div>
+
+<!-- ══ TAB BAR ══ -->
+<nav id="tabbar" class="flex overflow-x-auto border-b border-line bg-panel flex-none px-2">
+  <button class="tab-btn active" data-tab="setup">Set up</button>
+  <button class="tab-btn" data-tab="dd">Site checks</button>
+  <button class="tab-btn" data-tab="sim">Live floor</button>
+  <button class="tab-btn" data-tab="fin">Financials</button>
+  <button class="tab-btn" data-tab="adv">Advisor <span id="advBadge" class="hidden ml-1 px-1.5 rounded-full bg-warn text-white text-[10px]">0</span></button>
+  <button class="tab-btn" data-tab="rep">Report</button>
+  <button class="tab-btn" data-tab="scn">Scenarios</button>
+</nav>
+
+<!-- ══ MAIN ══ -->
+<div class="flex flex-1 min-h-0">
+  <aside id="leftPanel" class="w-[300px] flex-none border-r border-line bg-panel overflow-y-auto p-3 space-y-3 hidden md:block"></aside>
+  <main id="stage" class="flex-1 min-w-0 overflow-y-auto relative bg-ink">
+    <div id="stage-setup" class="stage-pane p-4"></div>
+    <div id="stage-dd" class="stage-pane p-4 hidden"></div>
+    <div id="stage-sim" class="stage-pane hidden h-full relative">
+      <canvas id="simCanvas" class="w-full h-full block cursor-grab"></canvas>
+      <div class="absolute top-3 left-3 flex flex-wrap gap-1.5 max-w-[78vw] no-print">
+        <button class="btn text-[11px]" id="btnPause" title="space">⏸</button>
+        <div class="seg num" id="speedSeg"></div>
+        <button class="btn text-[11px]" id="btnZoomIn">＋</button>
+        <button class="btn text-[11px]" id="btnZoomOut">－</button>
+        <button class="btn text-[11px]" id="btnCenter">⌂</button>
+        <button class="btn text-[11px]" id="btnSound" title="Toggle sound">🔊</button>
+      </div>
+      <div id="simLegend" class="absolute bottom-3 left-3 ovl p-2 text-[10px] space-y-0.5 no-print hidden sm:block"></div>
+      <div id="wxOverlay" class="absolute top-3 left-1/2 -translate-x-1/2 ovl px-3 py-1.5 text-[11px] hidden no-print"></div>
+      <canvas id="miniMap" class="absolute top-3 right-3 ovl no-print hidden sm:block cursor-pointer" style="width:158px;height:112px" title="Click to jump the camera"></canvas>
+      <div id="dockStrip" class="absolute bottom-3 right-3 ovl p-1.5 text-[10px] no-print hidden sm:block"></div>
+    </div>
+    <div id="stage-fin" class="stage-pane p-4 hidden"></div>
+    <div id="stage-adv" class="stage-pane p-4 hidden"></div>
+    <div id="stage-rep" class="stage-pane p-4 hidden"></div>
+    <div id="stage-scn" class="stage-pane p-4 hidden"></div>
+  </main>
+</div>
+
+<button id="btnDrawer" class="md:hidden fixed bottom-4 left-4 z-40 btn btn-amber text-[12px] shadow-xl no-print">☰ Controls</button>
+
+<!-- ══ ONBOARDING ══ -->
+<div id="onboard" class="fixed inset-0 bg-[#2E2B23]/45 z-50 hidden items-center justify-center p-6" style="backdrop-filter:blur(3px)">
+  <div class="card max-w-md w-full p-6">
+    <div class="hazard-thin mb-3 w-10"></div>
+    <div class="lbl mb-1">Guided tour · step <span id="obStep">1</span> of 5</div>
+    <div id="obTitle" class="disp font-semibold text-[#9C4B26] text-[19px] mb-2"></div>
+    <div id="obBody" class="text-[13px] text-[#5B5546] leading-relaxed mb-4"></div>
+    <div class="flex items-center justify-between">
+      <button class="btn text-[11px]" id="obSkip">Skip tour</button>
+      <div class="flex gap-2">
+        <button class="btn text-[11px]" id="obPrev">← Back</button>
+        <button class="btn btn-amber text-[11px]" id="obNext">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ═══════════════════════════════════════════════════════════════════
+   §1 UTILITIES & SEEDED RNG
+   ═══════════════════════════════════════════════════════════════════ */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const RNG = { fn: Math.random, seeded:false,
+  reset(){ this.seeded = el('seedToggle')?.checked; this.fn = this.seeded ? mulberry32(+el('seedVal').value||42) : Math.random; },
+  r(){ return this.fn(); },
+  range(a,b){ return a + this.r()*(b-a); },
+  gauss(mu=0,sd=1){ let u=0,v=0; while(!u)u=this.r(); while(!v)v=this.r(); return mu+sd*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); },
+  poisson(l){ const L=Math.exp(-l); let k=0,p=1; do{k++;p*=this.r()}while(p>L); return k-1; }
+};
+const el = id => document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const fmt$=v=>{const n=Math.abs(v);const s=v<0?'-$':'$';if(n>=1e6)return s+(n/1e6).toFixed(2)+'M';if(n>=1e3)return s+(n/1e3).toFixed(1)+'k';return s+n.toFixed(0)};
+const fmtN=v=>{const n=Math.abs(v);if(n>=1e6)return (v/1e6).toFixed(2)+'M';if(n>=1e3)return (v/1e3).toFixed(1)+'k';return (Math.round(v*10)/10).toString()};
+const pct=v=>(v*100).toFixed(1)+'%';
+const sgn$=v=>(v>=0?'+':'−')+fmt$(Math.abs(v));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   §1b SOUND — WebAudio dock thuds, reversing beepers, month chimes.
+   Unlocks on first user gesture; throttled; silent at fast-forward.
+   ═══════════════════════════════════════════════════════════════════ */
+const SND = {
+  ctx:null, on:true, last:{},
+  ensure(){ if(!this.on) return false;
+    if(!this.ctx){ try{ this.ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ this.on=false; return false; } }
+    if(this.ctx.state==='suspended') this.ctx.resume();
+    return this.ctx.state==='running';
+  },
+  gate(name, gapMs, anySpeed){
+    if(!this.on || !this.ctx || this.ctx.state!=='running' || document.hidden) return false;
+    if(S.tab!=='sim') return false;
+    if(!anySpeed && SIM.speed>60) return false;          // fast-forward would machine-gun
+    const n=performance.now();
+    if(this.last[name] && n-this.last[name]<gapMs) return false;
+    this.last[name]=n; return true;
+  },
+  osc(type,f0,f1,t0,dur,vol,curve){ const c=this.ctx,o=c.createOscillator(),g=c.createGain();
+    o.type=type; o.frequency.setValueAtTime(f0,t0); if(f1!==f0) o.frequency[curve||'exponentialRampToValueAtTime'](Math.max(1,f1),t0+dur);
+    g.gain.setValueAtTime(0.0001,t0); g.gain.exponentialRampToValueAtTime(vol,t0+0.008); g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+    o.connect(g).connect(c.destination); o.start(t0); o.stop(t0+dur+0.02); },
+  noise(t0,dur,vol,cut){ const c=this.ctx,len=Math.ceil(c.sampleRate*dur),b=c.createBuffer(1,len,c.sampleRate),d=b.getChannelData(0);
+    for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len);
+    const s=c.createBufferSource(); s.buffer=b;
+    const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=cut||500;
+    const g=c.createGain(); g.gain.setValueAtTime(vol,t0); g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+    s.connect(f).connect(g).connect(c.destination); s.start(t0); },
+  thud(){ if(!this.gate('thud',350)) return; try{ const t=this.ctx.currentTime;   // trailer meets dock bumper
+    this.osc('sine',82,38,t,0.22,0.32); this.noise(t,0.13,0.20,420); }catch(e){} },
+  beep(){ if(!this.gate('beep',640)) return; try{ const t=this.ctx.currentTime;   // reversing beeper pip
+    this.osc('square',1180,1180,t,0.10,0.045); }catch(e){} },
+  chime(good){ if(!this.gate('chime',1600,true)) return; try{ const t=this.ctx.currentTime;  // month close
+    if(good){ this.osc('sine',523,523,t,0.16,0.10); this.osc('sine',784,784,t+0.14,0.26,0.10); }
+    else    { this.osc('sine',392,392,t,0.18,0.10); this.osc('sine',311,311,t+0.16,0.30,0.10); } }catch(e){} },
+  alert(){ if(!this.gate('alert',2400,true)) return; try{ const t=this.ctx.currentTime;      // SLA breach
+    this.osc('triangle',660,440,t,0.16,0.09); this.osc('triangle',660,440,t+0.2,0.16,0.09); }catch(e){} }
+};
+document.addEventListener('pointerdown',()=>SND.ensure(),{passive:true});
+window.toggleSound=function(){ SND.on=!SND.on; if(SND.on) SND.ensure(); const b=el('btnSound'); if(b) b.textContent=SND.on?'🔊':'🔇'; };
+
+/* ═══════════════════════════════════════════════════════════════════
+   §2 DATA — LOCATION PRESETS  (§1 of spec)
+   Every field is displayed and editable via Build My Location.
+   ═══════════════════════════════════════════════════════════════════ */
+const LOC_FIELDS = [
+ // [key, label, unit, min, max, step, group]
+ ['landPrice','Land price','$/m²',50,8000,10,'Property'],
+ ['leaseRate','Prime lease rate','$/m²/yr',30,400,1,'Property'],
+ ['outgoings','Outgoings','$/m²/yr',5,60,1,'Property'],
+ ['incentivePct','Lease incentives / abatement','% yr1',0,30,1,'Property'],
+ ['wage','Base warehouse wage','$/hr',6,50,0.5,'Labor'],
+ ['forkPrem','Forklift-licensed premium','$/hr',0,8,0.5,'Labor'],
+ ['supSalary','Supervisor salary','$k/yr',40,160,1,'Labor'],
+ ['laborAvail','Labor availability index','0–1',0.2,0.95,0.01,'Labor'],
+ ['unionLoad','Union / penalty-rate loading','×',1,1.6,0.01,'Labor'],
+ ['kmPort','Distance to seaport','km',1,500,1,'Access'],
+ ['kmAir','Distance to airport','km',1,120,1,'Access'],
+ ['kmRail','Distance to intermodal rail','km',1,120,1,'Access'],
+ ['kmMwy','Distance to motorway ramp','km',0.5,30,0.5,'Access'],
+ ['powerTariff','Power tariff','$/kWh',0.05,0.5,0.01,'Utilities'],
+ ['gridOutage','Grid outages','hrs/yr',0,40,1,'Utilities'],
+ ['waterRate','Water','$/kL',0.5,6,0.1,'Utilities'],
+ ['gasRate','Gas','$/GJ',5,30,0.5,'Utilities'],
+ ['solarIdx','Solar feasibility index','0–1',0.2,1,0.01,'Utilities'],
+ ['tSummer','Ambient — summer avg','°C',5,45,1,'Climate'],
+ ['tAutumn','Ambient — autumn avg','°C',0,40,1,'Climate'],
+ ['tWinter','Ambient — winter avg','°C',-10,35,1,'Climate'],
+ ['tSpring','Ambient — spring avg','°C',0,40,1,'Climate'],
+ ['humidity','Humidity','0–1',0.2,0.95,0.01,'Climate'],
+ ['riskCyclone','Cyclone/severe-storm risk','0–1',0,1,0.05,'Climate'],
+ ['riskFlood','Flood risk','0–1',0,1,0.05,'Climate'],
+ ['riskSeismic','Seismic risk','0–1',0,1,0.05,'Climate'],
+ ['riskBushfire','Bushfire risk','0–1',0,1,0.05,'Climate'],
+ ['approvalWeeks','Council approval lead time','weeks',2,40,1,'Regulatory'],
+ ['propTax','Property tax rate','%/yr of land',0,4,0.05,'Regulatory'],
+ ['payrollTax','Payroll tax','% of wages',0,20,0.1,'Regulatory'],
+ ['govtIncentive','Government incentives','$k one-off',0,2000,10,'Regulatory'],
+ ['parcelDensity','E-commerce parcel density','0–1.2',0.1,1.2,0.01,'Market'],
+ ['b2bIndex','B2B freight demand index','0–1.2',0.1,1.2,0.01,'Market'],
+ ['vacancyRate','Competitor vacancy rate','%',0,15,0.1,'Market'],
+ ['storageBench','3PL storage benchmark','$/pallet/wk',2,12,0.1,'Market'],
+ ['pickBench','3PL pick fee benchmark','$/order',3,24,0.05,'Market'],
+ ['congestMin','Peak-hour truck delay','min',0,60,1,'Market'],
+];
+function mkLoc(o){ return Object.assign({ zoning:'Industrial 1', hazmatOK:true, coldOK:true, curfew:false }, o); }
+const LOCATIONS = {
+ truganina: mkLoc({name:'Melbourne — Truganina', country:'AU', tag:'West-Melb logistics core', landPrice:950, leaseRate:135, outgoings:28, incentivePct:8, wage:32.5, forkPrem:3.5, supSalary:95, laborAvail:.72, unionLoad:1.22, kmPort:28,kmAir:22,kmRail:9,kmMwy:2, powerTariff:.27, gridOutage:4, waterRate:3.2,gasRate:14, solarIdx:.68, tSummer:28,tAutumn:19,tWinter:14,tSpring:20, humidity:.58, riskCyclone:.0,riskFlood:.25,riskSeismic:.15,riskBushfire:.3, approvalWeeks:14, propTax:2.2, payrollTax:4.85, govtIncentive:60, parcelDensity:.85,b2bIndex:.8,vacancyRate:2.1, storageBench:6.6, pickBench:11.7, congestMin:18}),
+ easterncreek: mkLoc({name:'Sydney — Eastern Creek', country:'AU', tag:'M7 super-prime', landPrice:1750, leaseRate:205, outgoings:38, incentivePct:5, wage:34.5, forkPrem:3.8, supSalary:105, laborAvail:.66, unionLoad:1.25, kmPort:42,kmAir:34,kmRail:6,kmMwy:1.5, powerTariff:.31, gridOutage:3, waterRate:3.4,gasRate:15, solarIdx:.7, tSummer:27,tAutumn:20,tWinter:15,tSpring:21, humidity:.62, riskCyclone:0,riskFlood:.3,riskSeismic:.1,riskBushfire:.35, approvalWeeks:20, propTax:2.5, payrollTax:5.45, govtIncentive:0, parcelDensity:1.0,b2bIndex:.9,vacancyRate:.8, storageBench:8.0, pickBench:13.5, congestMin:26}),
+ berrinba: mkLoc({name:'Brisbane — Berrinba', country:'AU', tag:'Logan corridor growth', landPrice:1100, leaseRate:150, outgoings:30, incentivePct:7, wage:33, forkPrem:3.5, supSalary:98, laborAvail:.7, unionLoad:1.2, kmPort:22,kmAir:18,kmRail:12,kmMwy:3, powerTariff:.26, gridOutage:6, waterRate:3.1,gasRate:13, solarIdx:.8, tSummer:30,tAutumn:24,tWinter:18,tSpring:25, humidity:.7, riskCyclone:.35,riskFlood:.45,riskSeismic:.05,riskBushfire:.25, approvalWeeks:12, propTax:2.1, payrollTax:4.75, govtIncentive:120, parcelDensity:.8,b2bIndex:.75,vacancyRate:1.5, storageBench:6.8, pickBench:11.9, congestMin:16}),
+ mackay: mkLoc({name:'Mackay — Paget', country:'AU', tag:'Regional / mining corridor', landPrice:420, leaseRate:92, outgoings:18, incentivePct:12, wage:36, forkPrem:4.5, supSalary:115, laborAvail:.48, unionLoad:1.3, kmPort:8,kmAir:6,kmRail:4,kmMwy:1, powerTariff:.29, gridOutage:11, waterRate:2.8,gasRate:12, solarIdx:.85, tSummer:31,tAutumn:26,tWinter:20,tSpring:27, humidity:.74, riskCyclone:.8,riskFlood:.55,riskSeismic:.05,riskBushfire:.2, approvalWeeks:8, propTax:1.9, payrollTax:4.75, govtIncentive:250, parcelDensity:.35,b2bIndex:.85,vacancyRate:4, storageBench:5.6, pickBench:10.9, congestMin:6}),
+ tuas: mkLoc({name:'Singapore — Tuas', country:'SG', tag:'Port-adjacent leasehold', landPrice:5200, leaseRate:310, outgoings:42, incentivePct:3, wage:18.5, forkPrem:2.5, supSalary:88, laborAvail:.8, unionLoad:1.05, kmPort:5,kmAir:28,kmRail:15,kmMwy:1, powerTariff:.24, gridOutage:1, waterRate:2.5,gasRate:18, solarIdx:.55, tSummer:31,tAutumn:31,tWinter:30,tSpring:31, humidity:.84, riskCyclone:.1,riskFlood:.3,riskSeismic:.05,riskBushfire:0, approvalWeeks:10, propTax:1, payrollTax:17, govtIncentive:180, parcelDensity:1.1,b2bIndex:1.0,vacancyRate:6, storageBench:8.9, pickBench:14.4, congestMin:22}),
+ dfw: mkLoc({name:'Dallas–Fort Worth', country:'US', tag:'Inland intermodal hub', landPrice:480, leaseRate:78, outgoings:16, incentivePct:10, wage:21, forkPrem:2.5, supSalary:78, laborAvail:.75, unionLoad:1.08, kmPort:420,kmAir:25,kmRail:10,kmMwy:2, powerTariff:.11, gridOutage:9, waterRate:1.8,gasRate:8, solarIdx:.78, tSummer:35,tAutumn:22,tWinter:9,tSpring:23, humidity:.55, riskCyclone:.45,riskFlood:.3,riskSeismic:.05,riskBushfire:.15, approvalWeeks:6, propTax:2.4, payrollTax:.6, govtIncentive:300, parcelDensity:.95,b2bIndex:.95,vacancyRate:7, storageBench:5.0, pickBench:10.2, congestMin:20}),
+ maasvlakte: mkLoc({name:'Rotterdam — Maasvlakte', country:'NL', tag:'EU deep-sea gateway', landPrice:620, leaseRate:88, outgoings:20, incentivePct:4, wage:24, forkPrem:3, supSalary:82, laborAvail:.62, unionLoad:1.35, kmPort:3,kmAir:45,kmRail:5,kmMwy:2, powerTariff:.34, gridOutage:2, waterRate:2.2,gasRate:22, solarIdx:.5, tSummer:19,tAutumn:12,tWinter:5,tSpring:11, humidity:.8, riskCyclone:.05,riskFlood:.6,riskSeismic:.05,riskBushfire:0, approvalWeeks:26, propTax:1.8, payrollTax:12, govtIncentive:90, parcelDensity:.9,b2bIndex:1.0,vacancyRate:3, storageBench:7.6, pickBench:14.7, congestMin:24}),
+ jebelali: mkLoc({name:'Dubai — Jebel Ali', country:'AE', tag:'Free-zone port precinct', landPrice:380, leaseRate:62, outgoings:12, incentivePct:15, wage:9.5, forkPrem:1.8, supSalary:65, laborAvail:.85, unionLoad:1.0, kmPort:4,kmAir:18,kmRail:30,kmMwy:2, powerTariff:.12, gridOutage:2, waterRate:4,gasRate:10, solarIdx:.95, tSummer:41,tAutumn:33,tWinter:22,tSpring:32, humidity:.6, riskCyclone:.1,riskFlood:.1,riskSeismic:.1,riskBushfire:0, approvalWeeks:5, propTax:0, payrollTax:0, govtIncentive:400, parcelDensity:.75,b2bIndex:.9,vacancyRate:9, storageBench:4.5, pickBench:9.1, congestMin:14}),
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   §3 DATA — PRODUCT VERTICAL PROFILES  (§3 of spec)
+   seasonality: 12 monthly demand multipliers (Jan..Dec)
+   ═══════════════════════════════════════════════════════════════════ */
+const VERTICALS = {
+ fmcg:{name:'Ambient dry / FMCG', color:'#8FBF6B', mode:'Selective', modeKey:'selective', palletKg:620, picks:8, valueDensity:1400, shrink:.003, energyInt:.02, compCapexM2:0, storMult:1.0, handMult:1.0, footprint:1.15, equip:'Reach truck', season:[1,.95,.95,1,1,1,1,1,1.05,1.1,1.2,1.25], amr:.6, feature:null},
+ ecom:{name:'E-commerce small parcel', color:'#6FA3CC', mode:'Carton flow', modeKey:'cartonflow', palletKg:240, picks:22, valueDensity:2200, shrink:.008, energyInt:.03, compCapexM2:40, storMult:1.1, handMult:1.35, footprint:1.0, equip:'AMR / conveyor', season:[.8,.8,.85,.9,.95,1,1,1,1.05,1.15,1.6,1.75], amr:1, feature:null},
+ apparel:{name:'Apparel (GOH + flat)', color:'#C58FCC', mode:'GOH rail', modeKey:'goh', palletKg:180, picks:14, valueDensity:3200, shrink:.012, energyInt:.025, compCapexM2:60, storMult:1.15, handMult:1.25, footprint:1.1, equip:'GOH rail / trolley', season:[.85,1.2,1.3,1.1,.9,.85,.9,1.15,1.3,1.15,1.2,1.1], amr:.5, feature:'goh'},
+ electronics:{name:'Electronics (high value)', color:'#5BD6C8', mode:'Selective + cage', modeKey:'selective', palletKg:380, picks:6, valueDensity:18000, shrink:.006, energyInt:.03, compCapexM2:55, storMult:1.2, handMult:1.3, footprint:1.15, equip:'Reach truck', season:[.85,.85,.9,.95,.95,1,1,1,1.05,1.1,1.5,1.6], amr:.8, feature:'hvcage'},
+ furniture:{name:'Furniture / bulky', color:'#BF8B5E', mode:'Floor / drive-in', modeKey:'drivein', palletKg:450, picks:1.6, valueDensity:2600, shrink:.003, energyInt:.015, compCapexM2:10, storMult:.9, handMult:1.1, footprint:2.4, equip:'Counterbalance', season:[1,1,1,1,1,1.05,1.1,1,1,1,1.1,1.15], amr:.2, feature:null},
+ auto:{name:'Automotive spare parts', color:'#9AA5B5', mode:'VNA', modeKey:'vna', palletKg:520, picks:5, valueDensity:4500, shrink:.004, energyInt:.02, compCapexM2:35, storMult:1.1, handMult:1.15, footprint:.85, equip:'VNA turret', season:[1,1,1,1,1,1,1,1,1,1,1,1], amr:.5, feature:null},
+ chilled:{name:'Chilled food (0–4 °C)', color:'#7CC7FF', mode:'Selective cold', modeKey:'selective', palletKg:700, picks:9, valueDensity:2800, shrink:.005, energyInt:.55, compCapexM2:180, storMult:1.6, handMult:1.4, footprint:1.2, equip:'Reach (cold-spec)', season:[1.15,1.1,1,1,.95,.9,.9,.95,1,1.05,1.2,1.4], amr:.4, feature:'chill', needsCold:true, needsESFR:true, needsFood:true},
+ frozen:{name:'Frozen (−18 °C)', color:'#B8E4FF', mode:'Drive-in / shuttle', modeKey:'shuttle', palletKg:720, picks:6, valueDensity:3000, shrink:.004, energyInt:.95, compCapexM2:260, storMult:1.9, handMult:1.5, footprint:1.05, equip:'Shuttle + reach', season:[1.05,1,1,1,1,1.05,1.1,1.05,1,1,1.15,1.35], amr:.3, feature:'frost', needsCold:true, needsESFR:true, needsFood:true},
+ pharma:{name:'Pharma (GDP 15–25 °C)', color:'#F2F7C8', mode:'Selective validated', modeKey:'selective', palletKg:400, picks:4, valueDensity:26000, shrink:.002, energyInt:.18, compCapexM2:220, storMult:1.8, handMult:1.7, footprint:1.2, equip:'Reach (validated)', season:[1,1,1.05,1.05,1.1,1.15,1.15,1.1,1.05,1,1,1], amr:.6, feature:'gdp', needsGDP:true},
+ dg:{name:'Dangerous goods / chem', color:'#FF9B54', mode:'Segregated drive-in', modeKey:'drivein', palletKg:800, picks:3, valueDensity:3800, shrink:.003, energyInt:.04, compCapexM2:150, storMult:1.5, handMult:1.45, footprint:1.5, equip:'Counterbalance (EX)', season:[1,1,1,1,1,1,1,1,1,1,1,1], amr:.1, feature:'dgcage', needsDG:true, needsESFR:true},
+ beverage:{name:'Beverage (heavy pallets)', color:'#E0C36B', mode:'Double-deep', modeKey:'doubledeep', palletKg:1050, picks:2.5, valueDensity:1600, shrink:.002, energyInt:.02, compCapexM2:15, storMult:.95, handMult:1.05, footprint:1.05, equip:'Counterbalance', season:[1.3,1.2,1.05,.95,.85,.8,.8,.85,.95,1.1,1.3,1.5], amr:.3, feature:null},
+ tyres:{name:'Tyres', color:'#5E6B7E', mode:'Stillage / floor', modeKey:'floor', palletKg:380, picks:2, valueDensity:1900, shrink:.003, energyInt:.02, compCapexM2:20, storMult:.95, handMult:1.0, footprint:1.8, equip:'Counterbalance', season:[.95,.95,1.05,1.15,1.2,1.1,1,1,1.05,1.1,1,.95], amr:.2, feature:null, needsESFR:true},
+};
+const MODE_RACK_COST = { selective:165, doubledeep:190, drivein:210, vna:240, shuttle:520, cartonflow:290, goh:230, floor:25 }; // $/pallet position
+
+/* ═══════════════════════════════════════════════════════════════════
+   §4 DATA — DUE DILIGENCE CHECKLIST  (§2 of spec)
+   Every item is a real input; score() → 0..1; each feeds PEN below.
+   ═══════════════════════════════════════════════════════════════════ */
+const DD_ITEMS = [
+ // Structure
+ {k:'clearHeight', g:'Structure', label:'Clear height', type:'num', unit:'m', min:4,max:14,step:.5, def:10.5, w:5, score:v=>clamp((v-6)/6,0,1), note:'Sets max rack levels (1.7 m/beam + 1.5 m clearance)'},
+ {k:'colGrid', g:'Structure', label:'Column grid spacing', type:'sel', opts:['8×8 m','11×11 m','12×22 m'], def:'11×11 m', w:2, score:v=>({'8×8 m':.3,'11×11 m':.7,'12×22 m':1})[v], note:'Tight grids waste aisle layout ~ efficiency'},
+ {k:'floorLoad', g:'Structure', label:'Floor load capacity', type:'num', unit:'kN/m²', min:15,max:70,step:1, def:40, w:3, score:v=>clamp((v-20)/30,0,1), note:'<30 kN/m² blocks heavy beverage/DG racking'},
+ {k:'flatness', g:'Structure', label:'Floor flatness class', type:'sel', opts:['FM3','FM2','FM1 / superflat'], def:'FM2', w:2, score:v=>({'FM3':.3,'FM2':.7,'FM1 / superflat':1})[v], note:'VNA requires FM1/superflat'},
+ {k:'roof', g:'Structure', label:'Roof condition / leak risk', type:'sel', opts:['Poor','Fair','Good'], def:'Good', w:3, score:v=>({'Poor':.1,'Fair':.6,'Good':1})[v], note:'Poor roof → stock damage & remediation CapEx'},
+ {k:'mezz', g:'Structure', label:'Mezzanine potential', type:'chk', def:true, w:1, score:v=>v?1:.4, note:'Enables e-com pick modules'},
+ // Docks & yard
+ {k:'dockDoors', g:'Docks & yard', label:'Recessed dock doors', type:'num', unit:'#', min:2,max:40,step:1, def:12, w:5, score:v=>clamp(v/16,0,1), note:'Direct throughput gate'},
+ {k:'ramps', g:'Docks & yard', label:'On-grade ramps', type:'num', unit:'#', min:0,max:6,step:1, def:2, w:1, score:v=>clamp(v/2,0,1), note:'Container / side-load flexibility'},
+ {k:'levellers', g:'Docks & yard', label:'Dock levellers fitted', type:'chk', def:true, w:2, score:v=>v?1:.2, note:'Missing → unload time ×1.3'},
+ {k:'courtDepth', g:'Docks & yard', label:'Truck court depth', type:'num', unit:'m', min:20,max:60,step:1, def:36, w:4, score:v=>clamp((v-24)/16,0,1), note:'<32 m → dock turnaround +40%'},
+ {k:'bDouble', g:'Docks & yard', label:'B-double swept path', type:'chk', def:true, w:2, score:v=>v?1:.3, note:'No → linehaul $/pallet +18% (smaller rigs)'},
+ {k:'trailerPark', g:'Docks & yard', label:'Trailer parking bays', type:'num', unit:'#', min:0,max:30,step:1, def:8, w:1, score:v=>clamp(v/10,0,1), note:'Overflow buffer for arrival waves'},
+ {k:'carPark', g:'Docks & yard', label:'Car parking spaces', type:'num', unit:'#', min:10,max:300,step:5, def:80, w:1, score:v=>clamp(v/120,0,1), note:'Short → absenteeism creep'},
+ {k:'hardstand', g:'Docks & yard', label:'Hardstand area', type:'chk', def:true, w:1, score:v=>v?1:.4, note:'Container drops need hardstand'},
+ {k:'gatehouse', g:'Docks & yard', label:'Gatehouse present', type:'chk', def:true, w:2, score:v=>v?1:.2, note:'Missing → arrival chaos, shrinkage +0.2 pts'},
+ // Fire & safety
+ {k:'sprinkler', g:'Fire & safety', label:'Sprinkler class', type:'sel', opts:['None','Standard','ESFR'], def:'ESFR', w:5, score:v=>({'None':0,'Standard':.55,'ESFR':1})[v], note:'Non-ESFR caps racks at 6 m; locks cold/DG/tyres'},
+ {k:'hydrants', g:'Fire & safety', label:'Hydrant coverage', type:'chk', def:true, w:2, score:v=>v?1:.2, note:'Insurance & compliance'},
+ {k:'smokeVents', g:'Fire & safety', label:'Smoke vents', type:'chk', def:true, w:1, score:v=>v?1:.4, note:''},
+ {k:'egress', g:'Fire & safety', label:'Emergency egress compliant', type:'chk', def:true, w:3, score:v=>v?1:0, note:'Fail = cannot occupy'},
+ {k:'firstAid', g:'Fire & safety', label:'First-aid / PPE stations', type:'chk', def:true, w:1, score:v=>v?1:.5, note:''},
+ // Power & services
+ {k:'supplyKva', g:'Power & services', label:'Incoming supply', type:'num', unit:'kVA', min:100,max:5000,step:50, def:1200, w:5, score:(v,D)=>clamp(v/Math.max(1,D.reqKva*1.15),0,1), note:'vs required load; short → automation locked'},
+ {k:'txHeadroom', g:'Power & services', label:'Transformer headroom', type:'num', unit:'%', min:0,max:60,step:5, def:25, w:2, score:v=>clamp(v/30,0,1), note:''},
+ {k:'genset', g:'Power & services', label:'Backup generator', type:'chk', def:false, w:2, score:v=>v?1:.4, note:'Else grid outages halt ops (lost hrs)'},
+ {k:'evCharge', g:'Power & services', label:'EV / AGV charging capacity', type:'chk', def:true, w:1, score:v=>v?1:.4, note:'AGV fleet requires charging bays'},
+ {k:'lux', g:'Power & services', label:'Lighting (LED)', type:'num', unit:'lux', min:100,max:600,step:10, def:350, w:2, score:v=>clamp((v-150)/200,0,1), note:'<300 lux → pick rate −7%'},
+ {k:'compAir', g:'Power & services', label:'Compressed air', type:'chk', def:false, w:1, score:v=>v?1:.6, note:'Needed for sortation pneumatics'},
+ {k:'fiber', g:'Power & services', label:'Data / fibre connectivity', type:'chk', def:true, w:2, score:v=>v?1:.2, note:'WMS uptime'},
+ {k:'dockWifi', g:'Power & services', label:'Dock Wi-Fi coverage', type:'chk', def:true, w:1, score:v=>v?1:.4, note:'Gaps → scan errors, UPH −5%'},
+ // Compliance & paperwork
+ {k:'zoningOk', g:'Compliance', label:'Zoning conformity', type:'chk', def:true, w:4, score:v=>v?1:0, note:'Fail = NO-GO override'},
+ {k:'occCert', g:'Compliance', label:'Occupancy certificate', type:'chk', def:true, w:3, score:v=>v?1:0, note:'Fail = cannot trade'},
+ {k:'permits', g:'Compliance', label:'DA / permit status', type:'sel', opts:['None','Pending','Approved'], def:'Approved', w:3, score:v=>({'None':0,'Pending':.5,'Approved':1})[v], note:'Pending adds approval-weeks delay cost'},
+ {k:'contam', g:'Compliance', label:'Environmental contamination', type:'sel', opts:['Flagged','Unknown','Clean report'], def:'Clean report', w:3, score:v=>({'Flagged':0,'Unknown':.4,'Clean report':1})[v], note:'Flagged → $450k remediation CapEx'},
+ {k:'foodGrade', g:'Compliance', label:'Food-grade certification', type:'chk', def:true, w:2, score:v=>v?1:.6, note:'Required for chilled/frozen; FMCG rate −5% without'},
+ {k:'gdpCert', g:'Compliance', label:'TGA / GDP capability (pharma)', type:'chk', def:false, w:2, score:v=>v?1:.6, note:'Gates pharma vertical'},
+ {k:'dgLicense', g:'Compliance', label:'DG license (hazmat)', type:'chk', def:false, w:2, score:v=>v?1:.6, note:'Gates DG vertical (with zoning flag)'},
+ {k:'insQuote', g:'Compliance', label:'Insurance quote obtained', type:'chk', def:true, w:1, score:v=>v?1:.5, note:'Unquoted → +10% premium uncertainty'},
+ {k:'cctv', g:'Compliance', label:'Security — CCTV & alarms', type:'chk', def:true, w:2, score:v=>v?1:.3, note:'Missing → shrink +0.3 pts, insurance +10%'},
+ {k:'fencing', g:'Compliance', label:'Perimeter fencing', type:'chk', def:true, w:1, score:v=>v?1:.3, note:''},
+ // Amenity & workforce
+ {k:'officePct', g:'Amenity', label:'Office fit-out', type:'num', unit:'% GFA', min:0,max:15,step:.5, def:5, w:1, score:v=>clamp(v/5,0,1), note:''},
+ {k:'amenities', g:'Amenity', label:'Staff amenities (canteen, lockers)', type:'chk', def:true, w:1, score:v=>v?1:.4, note:'Missing → absenteeism +1 pt'},
+ {k:'ptProx', g:'Amenity', label:'Public transport proximity', type:'sel', opts:['Far','Moderate','Near'], def:'Moderate', w:2, score:v=>({'Far':.2,'Moderate':.6,'Near':1})[v], note:'Far → absenteeism +3 pts, wage +4%'},
+ // Expansion
+ {k:'spareLand', g:'Expansion', label:'Spare land', type:'num', unit:'%', min:0,max:60,step:5, def:20, w:2, score:v=>clamp(v/30,0,1), note:'Future docks / mezzanine'},
+ {k:'addDocks', g:'Expansion', label:'Ability to add docks', type:'chk', def:true, w:1, score:v=>v?1:.4, note:'Enables "Add dock" advisor action'},
+];
+
+/* ═══════════════════════════════════════════════════════════════════
+   §5 GLOBAL STATE
+   ═══════════════════════════════════════════════════════════════════ */
+const S = {
+  tab:'setup',
+  locKey:'truganina',
+  loc: JSON.parse(JSON.stringify(LOCATIONS.truganina)),   // live editable copy
+  custom:false,
+  site:{ areaM2:20000, tenure:'lease', debtLVR:60, debtRate:6.4, debtTermYr:15, discountRate:10, targetOrders:1200, slaHours:24 },
+  dd:{}, // filled from defaults
+  mix:{ fmcg:40, ecom:30, electronics:10, beverage:20 },  // % shares
+  staff:{ receiving:3, putaway:3, forklift:5, picking:10, packing:6, dispatch:4, qc:2, maintenance:2, cleaning:1, security:1, supervisor:2, admin:2 },
+  autom:{ agv:0, conveyor:false, sortation:false, solar:false, substation:false, extraDocks:0, slotting:false, insBundle:false },
+  advisorDone:{}, advisorDismissed:{},
+  scenarios:[null,null,null],
+  onboardSeen:false,
+};
+DD_ITEMS.forEach(i=>S.dd[i.k]=i.def);
+
+/* ═══════════════════════════════════════════════════════════════════
+   §6 DERIVED MODEL — recompute() runs on every input change.
+   All penalties (PEN), capacity, CapEx, OpEx rates trace to inputs.
+   ═══════════════════════════════════════════════════════════════════ */
+let D = {};      // derived snapshot
+function mixShares(){ const t=Object.values(S.mix).reduce((a,b)=>a+b,0)||1; const o={}; for(const k in S.mix) if(S.mix[k]>0) o[k]=S.mix[k]/t; return o; }
+function mixBlend(fn){ const sh=mixShares(); let v=0; for(const k in sh) v+=sh[k]*fn(VERTICALS[k],k); return v; }
+function vertLocked(k){
+  const v=VERTICALS[k], dd=S.dd, L=S.loc, reasons=[];
+  if(v.needsESFR && dd.sprinkler!=='ESFR') reasons.push('needs ESFR sprinklers');
+  if(v.needsCold && !L.coldOK) reasons.push('cold store not permitted (zoning)');
+  if(v.needsFood && !dd.foodGrade) reasons.push('needs food-grade certification');
+  if(v.needsGDP && !dd.gdpCert) reasons.push('needs TGA/GDP capability');
+  if(v.needsDG && (!dd.dgLicense || !L.hazmatOK)) reasons.push('needs DG license + hazmat zoning');
+  return reasons;
+}
+function recompute(){
+  const L=S.loc, dd=S.dd, sh=mixShares(), area=S.site.areaM2;
+  // remove locked verticals from active mix (visible in UI as locked)
+  for(const k in S.mix) if(vertLocked(k).length) delete sh[k];
+  const shT=Object.values(sh).reduce((a,b)=>a+b,0)||1; for(const k in sh) sh[k]/=shT;
+  D.shares = sh;
+
+  // ── DD scoring (needs reqKva → 2-pass)
+  const coldShare=(sh.chilled||0)+(sh.frozen||0);
+  D.reqKva = area*0.012 + area*coldShare*0.09 + (S.autom.agv*6) + (S.autom.sortation?140:0) + (S.autom.conveyor?60:0);
+  let wSum=0, sSum=0; D.ddScores={};
+  DD_ITEMS.forEach(i=>{ const s=clamp(i.score(dd[i.k],D),0,1); D.ddScores[i.k]=s; wSum+=i.w; sSum+=i.w*s; });
+  D.ddScore = Math.round(100*sSum/wSum);
+
+  // ── Penalties  (§2: missing items impose concrete effects)
+  const P = {};
+  P.maxLevels = Math.max(1, Math.floor((dd.clearHeight-1.5)/1.7));
+  if(dd.sprinkler!=='ESFR') P.maxLevels = Math.min(P.maxLevels, 3);           // 6 m cap
+  P.unloadMult   = (dd.levellers?1:1.3) * (dd.courtDepth<32?1.4:1);
+  P.arrivalVar   = dd.gatehouse?1:1.5;
+  P.shrinkAdd    = (dd.gatehouse?0:.002) + (dd.cctv?0:.003);
+  P.pickMult     = (dd.lux<300?0.93:1) * (dd.dockWifi?1:0.95) * (dd.fiber?1:0.96);
+  P.vnaOk        = dd.flatness==='FM1 / superflat';
+  P.linehaulMult = dd.bDouble?1:1.18;
+  P.absentAdd    = ({'Far':.03,'Moderate':.01,'Near':0})[dd.ptProx] + (dd.amenities?0:.01) + (dd.carPark<S_totalHeads()*0.7?.005:0);
+  P.wageMult     = (dd.ptProx==='Far'?1.04:1);
+  P.powerShort   = dd.supplyKva < D.reqKva && !S.autom.substation;
+  P.canOccupy    = dd.egress && dd.occCert && dd.zoningOk;
+  P.outageHrs    = dd.genset?0:L.gridOutage;
+  P.roofRisk     = ({'Poor':.004,'Fair':.001,'Good':0})[dd.roof];             // stock damage %/mo
+  D.pen = P;
+
+  // ── Capacity
+  const rackable = area * 0.55;                                               // aisles/staging/offices excluded
+  const fpBlend = mixBlend(v=>v.footprint) || 1.15;
+  D.palletCap = Math.floor(rackable/(fpBlend*2.2)) * P.maxLevels;   // footprint × aisle-share factor
+  // demand
+  const demandIdx = L.parcelDensity*(sh.ecom||0)*1.6 + L.b2bIndex*(1-(sh.ecom||0));
+  D.baseOrders = S.site.targetOrders * demandIdx * (1 - L.vacancyRate/100*.8);
+  D.basePallets = clamp(D.palletCap*0.78, 0, D.palletCap);                    // steady-state target fill
+
+  // ── Rates (blended, all from location benchmarks × vertical multipliers)
+  D.storRate = L.storageBench * (Object.entries(sh).reduce((a,[k,s])=>a+s*VERTICALS[k].storMult,0)||1);
+  D.pickFee  = L.pickBench   * (Object.entries(sh).reduce((a,[k,s])=>a+s*VERTICALS[k].handMult,0)||1);
+  if(sh.fmcg && !dd.foodGrade) D.storRate*= (1 - .05*sh.fmcg);
+  D.picksPerOrder = mixBlend(v=>v.picks)||6;
+
+  // ── Linehaul $/pallet from access distances (§1)
+  D.linehaulIn  = (2.1 + L.kmPort*0.011 + L.kmRail*0.04 + L.kmMwy*0.35) * P.linehaulMult;
+  D.linehaulOut = (1.6 + L.kmMwy*0.4 + L.kmAir*0.008) * P.linehaulMult;
+  D.truckTurnVar = 1 + L.congestMin/60*.8;
+
+  // ── CapEx  (§5)
+  const C = {};
+  C.landOrEntry = S.site.tenure==='buy' ? L.landPrice*area*1.45 : 0;          // land + build premium if buying
+  C.fitout   = area * (55 + mixBlend(v=>v.compCapexM2));
+  C.racking  = D.palletCap * (Object.entries(sh).reduce((a,[k,s])=>a+s*MODE_RACK_COST[VERTICALS[k].modeKey],0)||165);
+  C.equipment= 42000*Math.ceil(S.staff.forklift*0.8) + S.autom.agv*68000 + (S.autom.conveyor?480000:0) + (S.autom.sortation?1350000:0) + (S.autom.solar?area*38*L.solarIdx:0) + (S.autom.substation?520000:0) + S.autom.extraDocks*185000 + (S.autom.slotting?35000:0);
+  C.compliance = (dd.contam==='Flagged'?450000:0) + (dd.permits==='Pending'? L.approvalWeeks*week$():0) + (dd.roof==='Poor'?area*12:0);
+  C.total = C.landOrEntry + C.fitout + C.racking + C.equipment + C.compliance - L.govtIncentive*1000;
+  D.capex = C;
+  function week$(){ return (L.leaseRate*area/52)*0.6; }                       // holding cost of delay
+
+  // ── Debt package (§5)
+  const debt = C.total * S.site.debtLVR/100;
+  const r = S.site.debtRate/100/12, n = S.site.debtTermYr*12;
+  D.debt = debt; D.debtSvcMo = debt>0 ? debt*r/(1-Math.pow(1+r,-n)) : 0;
+  D.equity = C.total - debt;
+
+  // ── OpEx rates (per day unless noted)
+  const hrs=8, days=1;
+  const wage = L.wage*P.wageMult, prem=L.forkPrem, load=L.unionLoad*(1+L.payrollTax/100);
+  const heads=S.staff;
+  D.laborDay = (
+    (heads.receiving+heads.putaway+heads.picking+heads.packing+heads.dispatch+heads.qc+heads.cleaning)*wage*hrs*load +
+    (heads.forklift)*(wage+prem)*hrs*load +
+    (heads.maintenance)*(wage+2)*hrs*load +
+    (heads.security)*(wage+1)*hrs*load*1.4 +                                  // 24/7 coverage
+    (heads.supervisor)*(L.supSalary*1000/260) +
+    (heads.admin)*(wage*0.95)*hrs*load
+  );
+  // energy: lighting + HVAC(climate) + refrigeration(vertical energyInt × volume)
+  const vol = area*Math.min(dd.clearHeight,12);
+  D.refrigKwhDay = Object.entries(sh).reduce((a,[k,s])=>a+s*VERTICALS[k].energyInt*vol,0);
+  D.lightKwhDay  = area*0.011*(dd.lux/350)*16;
+  D.energyDay = 0; // finalized per-tick with season/heatwave; base stored:
+  D.powerTariffEff = L.powerTariff * (S.autom.solar? (1-0.32*L.solarIdx):1);
+  D.leaseDay = S.site.tenure==='lease' ? (L.leaseRate+L.outgoings)*area/365 * (1-L.incentivePct/100*0.2) : (L.outgoings*area/365 + L.landPrice*area*L.propTax/100/365);
+  D.maintDay = (C.racking+C.equipment)*0.045/365 + area*0.9/365;
+  // insurance: value at risk × base × climate multiplier × security credit
+  const invValue = D.basePallets * mixBlend(v=>v.valueDensity);
+  const riskMult = 1 + L.riskCyclone*.9 + L.riskFlood*.6 + L.riskSeismic*.3 + L.riskBushfire*.3;
+  const secCred = (dd.cctv?0.94:1)*(dd.fencing?0.97:1)*(dd.hydrants?0.95:1)*(dd.insQuote?1:1.1)*(S.autom.insBundle?0.86:1);
+  D.insuranceYr = (invValue*0.0045 + area*4.2) * riskMult * secCred;
+  D.securityDay = heads.security>0? 0 : 220;                                  // contract patrol if unstaffed
+  D.adminDay = 380 + area*0.02;
+  D.shrinkRate = mixBlend(v=>v.shrink) + P.shrinkAdd;
+  D.invValue = invValue;
+  D.dockCount = dd.dockDoors + S.autom.extraDocks;
+  updateHeader();
+}
+function S_totalHeads(){ return Object.values(S.staff).reduce((a,b)=>a+b,0); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   §7 SIMULATION ENGINE — discrete-event, 1-s resolution  (§4)
+   ═══════════════════════════════════════════════════════════════════ */
+const SIM = {
+  t:0, day:1, month:0, paused:false, speed:1, speeds:[1,5,25,100,1000],
+  pallets:0, inv:{}, promo:1, bestDay:0, backlog:0, staged:0, packQ:0, shippedToday:0, receivedToday:0,
+  ordersToday:0, pickedToday:0, cohorts:[], lateToday:0, slaTrend:[],
+  trucks:[], workers:[], vehicles:[], events:[],
+  weather:{rain:false, heat:false, until:0},
+  outage:false, outageUntil:0,
+  fin:{ revToday:0, laborToday:0, energyToday:0, otherToday:0, days:[], months:[], cum:0, kwhToday:0 },
+  cpoTrend:[], utilEMA:.5, dockBusy:0, dockSamples:1, dockBusySum:0,
+  breakdowns:0, absentToday:0, rosterToday:0,
+  started:false,
+};
+function totalInv(){ let t=0; for(const k in SIM.inv) t+=SIM.inv[k]; return t; }
+function hourOf(){ return (SIM.t/3600)%24; }
+function seasonTemp(){
+  const m = SIM.month, L=S.loc;
+  const seq=[L.tSummer,L.tSummer,L.tAutumn,L.tAutumn,L.tAutumn,L.tWinter,L.tWinter,L.tWinter,L.tSpring,L.tSpring,L.tSpring,L.tSummer]; // southern-hemisphere style; harmless generic cycle
+  return seq[m];
+}
+function seasonMult(){ const m=SIM.month; return Object.entries(D.shares).reduce((a,[k,s])=>a+s*VERTICALS[k].season[m],0)||1; }
+
+function resetSim(){
+  RNG.reset(); recompute();
+  Object.assign(SIM,{ t:6*3600, day:1, month:0, pallets:0, backlog:0, staged:0, packQ:0,
+    shippedToday:0, receivedToday:0, ordersToday:0, pickedToday:0, trucks:[], workers:[], vehicles:[], events:[],
+    weather:{rain:false,heat:false,until:0}, outage:false, outageUntil:0,
+    fin:{revToday:0,laborToday:0,energyToday:0,otherToday:0,days:[],months:[],cum:-D.equity,kwhToday:0},
+    cpoTrend:[], utilEMA:.5, dockBusySum:0, dockSamples:1, breakdowns:0, absentToday:0, rosterToday:0, started:true });
+  SIM.inv={}; SIM.promo=1; SIM.bestDay=0; SIM.cohorts=[]; SIM.lateToday=0; SIM.slaTrend=[];
+  for(const k in D.shares) SIM.inv[k]=Math.floor(D.basePallets*D.shares[k]*0.55);   // commissioning stock 55%
+  SIM.pallets=totalInv();
+  spawnWorld(); logEvent('Site commissioned — simulation started at '+S.loc.name,'ok');
+}
+function rollRoster(){
+  const total=S_totalHeads();
+  const absent = clamp((1-S.loc.laborAvail)*.12 + D.pen.absentAdd + RNG.gauss(0,.01), 0, .35);
+  SIM.absentToday = Math.round(total*absent);
+  SIM.rosterToday = total - SIM.absentToday;
+  // rebuild worker entities to the rostered count (visual population)
+  buildWorkers();
+}
+function newDay(){
+  const f=SIM.fin;
+  const dayRec={ day:SIM.day, rev:f.revToday, labor:f.laborToday, energy:f.energyToday, other:f.otherToday,
+    orders:SIM.shippedToday, kwh:f.kwhToday, late:SIM.lateToday };
+  dayRec.opex = dayRec.labor+dayRec.energy+dayRec.other;
+  dayRec.cpo = SIM.shippedToday>0 ? dayRec.opex/SIM.shippedToday : 0;
+  f.days.push(dayRec); if(f.days.length>400) f.days.shift();
+  SIM.cpoTrend.push(dayRec.cpo); if(SIM.cpoTrend.length>60) SIM.cpoTrend.shift();
+  if(SIM.shippedToday>SIM.bestDay && SIM.day>3){ SIM.bestDay=SIM.shippedToday; logEvent('Record dispatch — '+Math.round(SIM.shippedToday)+' orders shipped in a day','ok'); }
+  const onTime = SIM.pickedToday>0? clamp(1-SIM.lateToday/Math.max(1,SIM.pickedToday),0,1) : 1;
+  SIM.slaTrend.push(onTime); if(SIM.slaTrend.length>60) SIM.slaTrend.shift();
+  if(onTime<0.95 && SIM.pickedToday>50){ SND.alert(); } if(onTime<0.95 && SIM.pickedToday>50) logEvent('SLA breach — '+((1-onTime)*100).toFixed(0)+'% shipped outside the '+(S.site.slaHours||24)+' h window; '+fmt$(SIM.lateToday*D.pickFee*0.5)+' service credits issued','warn');
+  SIM.lateToday=0;
+  f.cum += dayRec.rev - dayRec.opex - D.debtSvcMo/30.4;
+  if(SIM.day%30===0){ closeMonth(); }
+  SIM.day++; SIM.month = Math.floor((SIM.day-1)/30)%12;
+  f.revToday=f.laborToday=f.energyToday=f.otherToday=f.kwhToday=0;
+  SIM.shippedToday=SIM.receivedToday=SIM.ordersToday=SIM.pickedToday=0;
+  rollRoster();
+  // weather roll (climate-driven)
+  const L=S.loc;
+  if(RNG.r() < .06 + L.humidity*.1 + L.riskCyclone*.06){ SIM.weather.rain=true; SIM.weather.until=SIM.t+RNG.range(3,9)*3600; logEvent('Weather: rain front — yard moves slowed','warn'); }
+  if(seasonTemp()>=30 && RNG.r()<.25){ SIM.weather.heat=true; SIM.weather.until=SIM.t+RNG.range(6,12)*3600; logEvent('Heatwave — refrigeration load up','warn'); }
+  if(!S.dd.genset && RNG.r() < L.gridOutage/365){ SIM.outage=true; SIM.outageUntil=SIM.t+RNG.range(1,4)*3600; logEvent('Grid outage — operations halted (no backup generator)','bad'); }
+  if(RNG.r() < L.riskCyclone*0.004){ SIM.outage=true; SIM.outageUntil=SIM.t+RNG.range(5,9)*3600;
+    const excess=D.invValue*0.0004; SIM.fin.otherToday+=excess;
+    logEvent('SEVERE STORM — site shut for the day-shift, insurance excess '+fmt$(excess)+' booked','bad'); }
+  if(SIM.absentToday > S_totalHeads()*0.15) logEvent('Absenteeism spike — '+SIM.absentToday+' no-shows (labor index '+L.laborAvail+(S.dd.ptProx==='Far'?', PT far':'')+')','warn');
+  if(RNG.r()<.05){ SIM.promo=1.3; logEvent('Client promo surge — order intake +30% today','warn'); } else SIM.promo=1;
+}
+function closeMonth(){
+  const f=SIM.fin, last=f.days.slice(-30);
+  const m={ month:f.months.length, rev:0,opex:0,orders:0, labor:0,energy:0,other:0,kwh:0,late:0 };
+  last.forEach(d=>{m.rev+=d.rev;m.opex+=d.opex;m.orders+=d.orders;m.labor+=d.labor;m.energy+=d.energy;m.other+=d.other;m.kwh+=d.kwh||0;m.late+=d.late||0});
+  m.debtSvc=D.debtSvcMo; m.ebitda=m.rev-m.opex; m.cash=m.ebitda-m.debtSvc;
+  f.months.push(m);
+  const first = m.ebitda>0 && f.months.filter(x=>x.ebitda>0).length===1;
+  logEvent('Month '+(m.month+1)+' close — EBITDA '+fmt$(m.ebitda)+(first?' · first profitable month':''), m.ebitda>0?'ok':'warn');
+  SND.chime(m.ebitda>0);
+}
+function logEvent(msg,cls){ SIM.events.unshift({t:SIM.day+'d '+String(Math.floor(hourOf())).padStart(2,'0')+':00', msg, cls}); if(SIM.events.length>40)SIM.events.pop(); }
+
+/* ── per-second economic + flow tick ── */
+function tick(){
+  SIM.t++;
+  const h=hourOf(), L=S.loc, P=D.pen, f=SIM.fin;
+  if(SIM.t % 86400 < 1) newDay();
+  if(SIM.weather.until && SIM.t>SIM.weather.until){ SIM.weather.rain=false; SIM.weather.heat=false; SIM.weather.until=0; }
+  if(SIM.outage && SIM.t>SIM.outageUntil){ SIM.outage=false; logEvent('Grid restored','ok'); }
+  const opsOpen = !SIM.outage && P.canOccupy && (!L.curfew || (h>=6&&h<22));
+
+  // ORDERS — stochastic demand w/ seasonality + intraday curve
+  const intraday = h>=8&&h<20 ? 1.72 : (h>=6&&h<8?0.74:0.18);   // integrates to ≈1.0/24h
+  const perSec = D.baseOrders*seasonMult()*(SIM.promo||1)*intraday/86400 * (1+RNG.gauss(0,.15));
+  if(RNG.r()<perSec){ SIM.backlog++; SIM.ordersToday++;
+    let c=SIM.cohorts[SIM.cohorts.length-1];
+    if(!c || SIM.t-c.born>1800){ c={born:SIM.t,n:0}; SIM.cohorts.push(c); }
+    c.n++;
+    if(SIM.cohorts.length>120){ const a=SIM.cohorts.shift(); SIM.cohorts[0].n+=a.n; SIM.cohorts[0].born=a.born; }
+  }
+
+  // TRUCK ARRIVAL WAVES (inbound) — waves at 06/10/14/18 ± congestion noise
+  if(opsOpen && [6,10,14,18].includes(Math.floor(h)) && SIM.t%3600<1){
+    // steady-state supply ≈ consumption at target fill; deficit adds proportional boost
+    const defFac = clamp(1 + (D.basePallets-SIM.pallets)/Math.max(1,D.basePallets)*1.5, .4, 2.2);
+    const n = Math.max(1, RNG.poisson(2.5*P.arrivalVar*seasonMult()*defFac));
+    for(let i=0;i<n;i++) spawnTruck('in', RNG.range(0, L.congestMin*60*P.arrivalVar));
+  }
+  // outbound trucks summoned when packQ builds
+  if(opsOpen && SIM.packQ>=26 && SIM.trucks.filter(t=>t.kind==='out'&&t.state!=='depart').length<3 && SIM.t%600<1) spawnTruck('out',0);
+
+  // FLOW: staged → putaway → racking
+  if(opsOpen){
+    const putRate = (S.staff.putaway+S.staff.forklift*.5)*(SIM.rosterToday/Math.max(1,S_totalHeads()))* 22/3600; // pallets/s
+    const mv = Math.min(SIM.staged, putRate*(SIM.weather.rain?0.99:1));
+    if(mv>0 && SIM.pallets<D.palletCap){
+      // deficit-weighted allocation across active verticals
+      let defs={}, defT=0;
+      for(const k in D.shares){ const d=Math.max(0, D.basePallets*D.shares[k]-(SIM.inv[k]||0)); defs[k]=d; defT+=d; }
+      if(defT>0){ for(const k in defs) SIM.inv[k]=(SIM.inv[k]||0)+mv*defs[k]/defT; SIM.staged-=mv; }
+    }
+    // PICK: backlog → packQ, drawing real stock per vertical (picks ÷ 48 cartons/pallet)
+    const pickersEff = pickersEffective();
+    const pickRate = pickersEff * 20/3600 * P.pickMult / (D.picksPerOrder/6);   // orders/s
+    let servable=0; for(const k in D.shares) if((SIM.inv[k]||0)>0.5) servable+=D.shares[k];
+    if(SIM.backlog>0 && servable>0){
+      const done = Math.min(SIM.backlog, pickRate*servable);
+      SIM.backlog-=done; SIM.packQ+=done; SIM.pickedToday+=done;
+      // SLA: consume oldest cohorts first (FIFO); late shipments earn the client a 50% pick-fee credit
+      let rem=done, late=0; const slaS=(S.site.slaHours||24)*3600;
+      while(rem>1e-6 && SIM.cohorts.length){ const c0=SIM.cohorts[0]; const take=Math.min(rem,c0.n);
+        if(SIM.t-c0.born>slaS) late+=take;
+        c0.n-=take; rem-=take; if(c0.n<=1e-6) SIM.cohorts.shift(); }
+      if(late>0){ SIM.lateToday+=late; f.otherToday += late*D.pickFee*0.5; }
+      for(const k in D.shares) if((SIM.inv[k]||0)>0.5)
+        SIM.inv[k]=Math.max(0, SIM.inv[k]-done*(D.shares[k]/servable)*(VERTICALS[k].picks/48));
+    }
+    // PACK+DISPATCH via docked outbound trucks
+    const packRate = S.staff.packing*26/3600*(S.autom.conveyor?1.25:1)*(S.autom.sortation?1.35:1);
+    const outDocked = SIM.trucks.find(t=>t.kind==='out'&&t.state==='dock');
+    if(SIM.packQ>0 && outDocked){
+      const done=Math.min(SIM.packQ, packRate);
+      SIM.packQ-=done; outDocked.load+=done;
+      SIM.shippedToday+=done;
+      f.revToday += done*D.pickFee;                                            // handling revenue
+      if(outDocked.load>=outDocked.capacity) outDocked.state='departPrep';
+    }
+    // equipment breakdown events
+    if(RNG.r()< (S.staff.forklift+S.autom.agv)*1.1e-6 ){ SIM.breakdowns++; logEvent('Equipment breakdown — maintenance dispatched (forklift #'+Math.ceil(RNG.r()*9)+')','warn'); f.otherToday+=380; }
+  }
+  // replenishment: keep inventory drifting toward target via inbound truck contents (handled in truck logic)
+  // storage revenue & shrinkage — exact per-vertical rates on real stock pools
+  for(const k in SIM.inv){ const v=VERTICALS[k];
+    f.revToday   += SIM.inv[k]*S.loc.storageBench*v.storMult/7/86400;
+    f.otherToday += SIM.inv[k]*v.valueDensity*(v.shrink+P.shrinkAdd)/365/86400; }
+  SIM.pallets = totalInv();
+  // labor cost accrues across the day
+  f.laborToday += D.laborDay*(SIM.rosterToday/Math.max(1,S_totalHeads()))/86400 * (h>=22||h<6?0.35:1);
+  // ENERGY: lighting(occupied hrs) + refrigeration(ambient-linked) + HVAC
+  const amb = seasonTemp() + (SIM.weather.heat?6:0) + Math.sin((h-14)/24*2*Math.PI)*-4;
+  const refrig = D.refrigKwhDay/86400 * (1 + Math.max(0,(amb-18))*0.028);
+  const hvac = S.site.areaM2*0.004/86400 * Math.abs(amb-21)/10 *3600/3600;
+  const light = (h>=5&&h<23?D.lightKwhDay/64800:D.lightKwhDay/64800*.15);
+  const kwh = (refrig+hvac+light)*(SIM.outage?0:1);
+  f.kwhToday+=kwh; f.energyToday += kwh*D.powerTariffEff*(SIM.weather.heat?1.12:1);
+  // fixed dailies
+  f.otherToday += (D.leaseDay + D.maintDay + D.insuranceYr/365 + D.securityDay + D.adminDay)/86400;
+  // dock saturation sampling
+  const busy=SIM.trucks.filter(t=>t.state==='dock').length;
+  SIM.dockBusySum+=busy/Math.max(1,D.dockCount); SIM.dockSamples++;
+  // labor utilization EMA (2 h)
+  const util = clamp((SIM.backlog>0?1:0.35)+(SIM.staged>10?.15:0),0,1);
+  SIM.utilEMA += (util-SIM.utilEMA)/7200;
+  // trucks state machine
+  truckTick();
+}
+function pickersEffective(){
+  const n = S.staff.picking*(SIM.rosterToday/Math.max(1,S_totalHeads()));
+  const agvAssist = Math.min(S.autom.agv*1.6, n*.8);
+  // non-linear aisle congestion: penalty grows quadratically past 10 manual pickers, mitigated by automation
+  const manual = Math.max(0, n-agvAssist*.4);
+  const pen = manual>10 ? Math.pow((manual-10)/14,2)*(S.autom.slotting?0.55:1)*(S.autom.agv>0?0.7:1) : 0;
+  return (n+agvAssist*.9) * clamp(1-pen,0.45,1);
+}
+/* ── trucks ── */
+let truckId=0;
+function spawnTruck(kind, delay){
+  SIM.trucks.push({ id:++truckId, kind, state:'arrive', t:0, delay, x:-60, y:0, dock:-1,
+    capacity: kind==='in'? Math.round(RNG.range(18,30)) : Math.round(RNG.range(24,32)), load:0,
+    pallets: kind==='in'? Math.round(RNG.range(18,30)):0, smoke:RNG.r()<.3 });
+}
+function truckTick(){
+  const P=D.pen, serviceBase = 55; // s per pallet unload w/ levellers
+  for(const t of SIM.trucks){
+    t.t++;
+    switch(t.state){
+      case 'arrive': if(t.t>t.delay+40){ t.state='queue'; t.t=0; } break;
+      case 'queue': {
+        if(t.t===2700){ SIM.fin.otherToday+=180; logEvent('Truck #'+t.id+' hit 45-min detention in the queue (+$180)','warn'); }
+        const gateBusy = SIM.trucks.some(o=>o!==t && o.state==='gate');
+        const ahead = SIM.trucks.filter(o=>o!==t&&o.state==='queue'&&o.id<t.id).length;
+        if(!gateBusy && ahead===0 && t.t> (S.dd.gatehouse?90:30)){ t.state='gate'; t.t=0; }
+        break; }
+      case 'gate': if(t.t> (S.dd.gatehouse?110:260)){ // no gatehouse → paperwork chaos at dock
+          const free=[...Array(D.dockCount).keys()].filter(i=>!SIM.trucks.some(o=>o.dock===i&&['dock','toDock','departPrep'].includes(o.state)));
+          if(free.length){
+            // dock zoning: inbound berths near receiving (left half), outbound near dispatch (right half)
+            const half=D.dockCount/2;
+            const pref=free.filter(i=> t.kind==='in' ? i<half : i>=half);
+            const pool=pref.length?pref:free;
+            t.dock=pool[Math.floor(RNG.r()*pool.length)]; t.state='toDock'; t.t=0; }
+        } break;
+      case 'toDock': if(t.t> 70*D.truckTurnVar*(SIM.weather.rain?1.25:1)){ t.state='dock'; t.t=0; SND.thud(); } break;
+      case 'dock':
+        if(t.kind==='in'){
+          const per = serviceBase*P.unloadMult*(SIM.weather.rain?1.15:1);
+          if(t.t> per*(t.capacity-t.pallets+1) && t.pallets>0){ t.pallets--; SIM.staged++; SIM.receivedToday++; SIM.fin.otherToday+=D.linehaulIn/t.capacity*0; }
+          if(t.pallets<=0){ t.state='departPrep'; t.t=0; SIM.fin.otherToday += D.linehaulIn*t.capacity; }
+        } else {
+          if(t.state==='dock' && t.t>1500 && t.load>4) t.state='departPrep';   // cut-off departure
+        }
+        break;
+      case 'departPrep': if(t.t>60){ if(t.kind==='out') SIM.fin.otherToday += D.linehaulOut*Math.ceil(t.load/12); t.state='depart'; t.t=0; } break;
+      case 'depart': if(t.t>200){ t.dead=true; } break;
+    }
+  }
+  SIM.trucks = SIM.trucks.filter(t=>!t.dead);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   §8 FINANCIAL & INVESTOR ENGINE  (§5)
+   ═══════════════════════════════════════════════════════════════════ */
+function modelRate(){ // steady-state estimate straight from the input model
+    const rev = D.basePallets*D.storRate/7 + D.baseOrders*D.pickFee;
+    const opex = D.laborDay + (D.refrigKwhDay+D.lightKwhDay)*D.powerTariffEff + D.leaseDay + D.maintDay + D.insuranceYr/365 + D.securityDay + D.adminDay + D.baseOrders/28*3*D.linehaulOut + D.baseOrders*D.picksPerOrder/48*D.linehaulIn;
+    return {revDay:rev, opexDay:opex, orders:D.baseOrders, laborDay:D.laborDay, energyDay:(D.refrigKwhDay+D.lightKwhDay)*D.powerTariffEff, estimated:true};
+}
+function uphNow(){ // labor productivity: units picked per rostered labor-hour (trailing 7d or model)
+  const days=SIM.fin.days.slice(-7);
+  const ord = days.length? days.reduce((a,d)=>a+d.orders,0)/days.length : D.baseOrders;
+  return ord*D.picksPerOrder/Math.max(1,(SIM.rosterToday||S_totalHeads())*8);
+}
+function runRate(){
+  const days=SIM.fin.days.slice(-30);
+  if(!days.length) return modelRate();
+  const s=days.reduce((a,d)=>({rev:a.rev+d.rev,opex:a.opex+d.opex,orders:a.orders+d.orders,labor:a.labor+d.labor,energy:a.energy+d.energy}),{rev:0,opex:0,orders:0,labor:0,energy:0});
+  const n=days.length;
+  return {revDay:s.rev/n, opexDay:s.opex/n, orders:s.orders/n, laborDay:s.labor/n, energyDay:s.energy/n, estimated:false};
+}
+function project5y(over={}){
+  // monthly cashflows, yr1 ramp 70→100%, growth 3%/yr, seasonality applied
+  // base the projection on steady state: trailing sim data once 60 mature days exist, else the input model
+  const rr = SIM.fin.days.length>=60 ? runRate() : modelRate();
+  const cf=[]; let rev0=rr.revDay*30.4*(over.demand||1), opx0=rr.opexDay*30.4;
+  const laborShare=rr.laborDay/Math.max(1,rr.opexDay), energyShare=rr.energyDay/Math.max(1,rr.opexDay);
+  const leaseShare=D.leaseDay*30.4/Math.max(1,opx0);
+  for(let m=0;m<60;m++){
+    const ramp = m<10 ? .7+.03*m : 1;
+    const g = Math.pow(1.03, m/12);
+    const seas = Object.entries(D.shares).reduce((a,[k,s])=>a+s*VERTICALS[k].season[m%12],0)||1;
+    let opexM = opx0*g*( 1 + laborShare*((over.wage||1)-1) + energyShare*((over.energy||1)-1) + leaseShare*((over.lease||1)-1) );
+    opexM *= (.55 + .45*ramp*seas*(over.demand||1)); // variable portion flexes w/ volume
+    const revM = rev0*ramp*seas*g;
+    cf.push({rev:revM, opex:opexM, ebitda:revM-opexM, cash:revM-opexM-D.debtSvcMo});
+  }
+  if(S.site.tenure==='buy' && D.capex.landOrEntry>0){
+    // terminal: property at 3%/yr appreciation less outstanding debt balance after 60 payments
+    const r=S.site.debtRate/100/12, n=S.site.debtTermYr*12;
+    const bal = D.debt>0? D.debt*(Math.pow(1+r,n)-Math.pow(1+r,60))/(Math.pow(1+r,n)-1) : 0;
+    cf[59].cash += D.capex.landOrEntry*Math.pow(1.03,5) - bal;
+  }
+  return cf;
+}
+function npvIrr(cf){
+  const rM = S.site.discountRate/100/12;
+  let npv=-D.equity; cf.forEach((c,i)=>npv+=c.cash/Math.pow(1+rM,i+1));
+  // IRR bisection on equity cashflows
+  let lo=-0.05, hi=1.0, irr=NaN;
+  const f=r=>{let v=-D.equity; cf.forEach((c,i)=>v+=c.cash/Math.pow(1+r/12,i+1)); return v;};
+  if((f(lo)>0)!==(f(hi)>0)){ for(let i=0;i<60;i++){ const mid=(lo+hi)/2; if(f(mid)>0) lo=mid; else hi=mid; } irr=(lo+hi)/2; }
+  // payback + breakeven
+  let cum=-D.equity, payback=null, breakeven=null;
+  cf.forEach((c,i)=>{ cum+=c.cash; if(payback===null&&cum>=0)payback=i+1; if(breakeven===null&&c.ebitda>0)breakeven=i+1; });
+  const yr1=cf.slice(0,12), ebitdaYr=yr1.reduce((a,c)=>a+c.ebitda,0);
+  const dscr = D.debtSvcMo>0 ? ebitdaYr/(D.debtSvcMo*12) : Infinity;
+  return {npv, irr, payback, breakeven, dscr, ebitdaYr};
+}
+function sensitivity(){
+  const base=npvIrr(project5y()).npv, out=[];
+  [['Demand','demand'],['Wages','wage'],['Lease','lease'],['Energy','energy']].forEach(([lbl,k])=>{
+    const up=npvIrr(project5y({[k]:1.2})).npv, dn=npvIrr(project5y({[k]:0.8})).npv;
+    out.push({lbl, up:up-base, dn:dn-base});
+  });
+  return {base, bars:out.sort((a,b)=>Math.abs(b.up-b.dn)-Math.abs(a.up-a.dn))};
+}
+function confidenceScore(){
+  const rr=runRate(), pj=npvIrr(project5y()), L=S.loc;
+  const marginY = (rr.revDay-rr.opexDay)/Math.max(1,rr.revDay);
+  const comp=[
+    {k:'Site readiness (DD)', v:D.ddScore/100, w:.25, why:'due-diligence score'},
+    {k:'EBITDA margin', v:clamp(marginY/0.28,0,1), w:.20, why:'vs 28% best-in-class 3PL'},
+    {k:'IRR vs 12% hurdle', v: isNaN(pj.irr)?0:clamp(pj.irr/0.24,0,1), w:.20, why:'equity IRR'},
+    {k:'Climate & regulatory risk', v:clamp(1-(L.riskCyclone*.5+L.riskFlood*.35+L.riskBushfire*.15+(S.dd.permits!=='Approved'?.25:0)),0,1), w:.15, why:'insurable hazards + permits'},
+    {k:'Utilization headroom', v:clamp(SIM.started? SIM.pallets/Math.max(1,D.palletCap)/0.85 : .7,0,1), w:.10, why:'rack utilization vs 85% target'},
+    {k:'Labor market', v:L.laborAvail, w:.10, why:'availability index'},
+  ];
+  let score=Math.round(100*comp.reduce((a,c)=>a+c.v*c.w,0));
+  let override=null;
+  if(!D.pen.canOccupy){ score=Math.min(score,25); override='Occupancy blocked: '+(!S.dd.zoningOk?'zoning non-conforming':!S.dd.occCert?'no occupancy certificate':'egress non-compliant'); }
+  const verdict = score>=70?'GO':score>=50?'CONDITIONAL':'NO-GO';
+  const flips = comp.slice().sort((a,b)=>a.v*a.w-b.v*b.w).slice(0,3).map(c=>flipText(c));
+  return {score, verdict, comp, flips, override, pj, rr, marginY};
+}
+function flipText(c){
+  const map={
+    'Site readiness (DD)':'Lift DD score above 80 (resolve red items — sprinklers, power, compliance paperwork).',
+    'EBITDA margin':'Raise margin above 18% — rebalance mix toward higher-rate verticals or cut CPO with automation.',
+    'IRR vs 12% hurdle':'Push equity IRR past the 12% hurdle — reduce CapEx (lease vs buy) or negotiate rates.',
+    'Climate & regulatory risk':'Secure approved permits and price hardened insurance / mitigation for climate exposure.',
+    'Utilization headroom':'Fill racking to ≥70% steady-state via anchor-tenant contracts before commit.',
+    'Labor market':'De-risk labor: shift premium, transport shuttle, or automation offsetting scarce local workforce.'
+  };
+  return map[c.k]||c.k;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   §9 AI ADVISOR — KPI watchers → actionable cards with payback  (§5)
+   ═══════════════════════════════════════════════════════════════════ */
+const ADVISOR_RULES = [
+ { id:'amr', title:'Deploy AMR fleet (6 units)', capex:()=>6*68000,
+   when:()=> SIM.started && lastCpo()>D.pickFee*1.15 && S.autom.agv===0 && !D.pen.powerShort,
+   why:()=>`CPO ${fmt$(lastCpo())} is running ${( (lastCpo()/D.pickFee-1)*100).toFixed(0)}% above the ${fmt$(D.pickFee)} blended pick fee. 6 AMRs add ~5.4 picker-equivalents and cut congestion.`,
+   payback:()=>{ const save=D.laborDay*0.14*365; return {save, months:Math.ceil(6*68000/(save/12))}; },
+   apply:()=>{ S.autom.agv+=6; } },
+ { id:'dock', title:'Add 2 dock doors', capex:()=>2*185000,
+   when:()=> SIM.started && dockSat()>0.85 && S.dd.addDocks,
+   why:()=>`Dock saturation ${(dockSat()*100).toFixed(0)}% — trucks queueing at the gatehouse are burning detention and throttling receipts.`,
+   payback:()=>{ const save=runRate().revDay*0.05*365; return {save, months:Math.ceil(370000/(save/12))}; },
+   apply:()=>{ S.autom.extraDocks+=2; } },
+ { id:'slot', title:'Slotting optimization + dead-stock audit', capex:()=>35000,
+   when:()=> SIM.started && SIM.backlog>120 && SIM.utilEMA>0.85 && !S.autom.slotting,
+   why:()=>`Backlog ${Math.round(SIM.backlog)} orders with labor utilization ${(SIM.utilEMA*100).toFixed(0)}% — travel-path waste, not headcount, is the constraint.`,
+   payback:()=>{ const save=D.laborDay*0.08*365; return {save, months:Math.ceil(35000/(save/12))}; },
+   apply:()=>{ S.autom.slotting=true; } },
+ { id:'solar', title:'Rooftop solar PPA', capex:()=>Math.round(S.site.areaM2*38*S.loc.solarIdx),
+   when:()=> SIM.started && energyShare()>0.22 && S.loc.solarIdx>0.6 && !S.autom.solar,
+   why:()=>`Energy is ${(energyShare()*100).toFixed(0)}% of OpEx and the solar feasibility index here is ${S.loc.solarIdx.toFixed(2)} — a rooftop array trims ~${(32*S.loc.solarIdx).toFixed(0)}% off grid draw.`,
+   payback:()=>{ const save=runRate().energyDay*0.32*S.loc.solarIdx*365; return {save, months:Math.ceil(S.site.areaM2*38*S.loc.solarIdx/(save/12))}; },
+   apply:()=>{ S.autom.solar=true; } },
+ { id:'sub', title:'Upgrade substation (+800 kVA)', capex:()=>520000,
+   when:()=> D.pen.powerShort,
+   why:()=>`Required load ${Math.round(D.reqKva)} kVA exceeds incoming supply ${S.dd.supplyKva} kVA — automation options are locked until supply is upgraded.`,
+   payback:()=>({save:0, months:null, note:'Enabler — unlocks AMR/conveyor/sortation ROI.'}),
+   apply:()=>{ S.autom.substation=true; S.dd.supplyKva+=800; } },
+ { id:'sort', title:'Install sortation system', capex:()=>1350000,
+   when:()=> SIM.started && runRate().orders>1800 && !S.autom.sortation && !D.pen.powerShort && S.dd.compAir,
+   why:()=>`Throughput ${Math.round(runRate().orders)} orders/day is past the manual-pack knee — sortation lifts pack rate 35% and stabilizes dispatch cut-offs.`,
+   payback:()=>{ const save=D.laborDay*0.18*365; return {save, months:Math.ceil(1350000/(save/12))}; },
+   apply:()=>{ S.autom.sortation=true; } },
+ { id:'ins', title:'Insurance optimization bundle', capex:()=>60000,
+   when:()=> D.insuranceYr>200000 && !S.autom.insBundle,
+   why:()=>`Annual premium ${fmt$(D.insuranceYr)} — a hardened-site bundle (monitored alarms, EWIS, sprinkler audit) earns a 14% underwriting credit.`,
+   payback:()=>{ const save=D.insuranceYr*0.14; return {save, months:Math.ceil(60000/(save/12))}; },
+   apply:()=>{ S.autom.insBundle=true; } },
+ { id:'sla', title:'Service recovery — reinforce pick wave', capex:()=>0,
+   when:()=> SIM.started && SIM.slaTrend.length>5 && slaOnTime()<0.9,
+   why:()=>`On-time dispatch is ${(slaOnTime()*100).toFixed(0)}% over the last week against the ${(S.site.slaHours||24)} h SLA — service credits are leaking ~${fmt$(runRate().orders*(1-slaOnTime())*D.pickFee*0.5*365)}/yr and the account is churn-risk.`,
+   payback:()=>({save:0, months:null, note:'Adds 3 picking heads to close the SLA gap (OpEx, no CapEx).'}),
+   apply:()=>{ S.staff.picking+=3; } },
+ { id:'stall', title:'Backlog stall — add pick shift', capex:()=>0,
+   when:()=> SIM.started && SIM.backlog>300 && SIM.pallets<D.basePallets*.3,
+   why:()=>`Backlog ${Math.round(SIM.backlog)} but racking is only ${(SIM.pallets/D.palletCap*100).toFixed(0)}% full — the stall is inbound replenishment, not picking. Expedite inbound waves / +2 receiving.`,
+   payback:()=>({save:0,months:null,note:'Adds 2 receiving + 2 putaway heads (OpEx, not CapEx).'}),
+   apply:()=>{ S.staff.receiving+=2; S.staff.putaway+=2; } },
+];
+function slaOnTime(){ const t=SIM.slaTrend.slice(-7); return t.length? t.reduce((a,b)=>a+b,0)/t.length : 1; }
+function lastCpo(){ const c=SIM.cpoTrend.filter(x=>x>0); return c.length?c[c.length-1]:0; }
+function dockSat(){ return SIM.dockBusySum/Math.max(1,SIM.dockSamples); }
+function energyShare(){ const rr=runRate(); return rr.energyDay/Math.max(1,rr.opexDay); }
+function activeAdvice(){ return ADVISOR_RULES.filter(r=>!S.advisorDone[r.id] && !S.advisorDismissed[r.id] && r.when()); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   §10 SCENARIOS — save up to 3 configs, compare side-by-side  (§5)
+   ═══════════════════════════════════════════════════════════════════ */
+function snapshotScenario(slot){
+  const cs=confidenceScore(), rr=runRate();
+  S.scenarios[slot]={
+    name:S.loc.name+' · '+(S.site.areaM2/1000)+'k m²',
+    saved:new Date().toLocaleTimeString(),
+    cfg:JSON.parse(JSON.stringify({locKey:S.locKey, loc:S.loc, site:S.site, dd:S.dd, mix:S.mix, staff:S.staff, autom:S.autom})),
+    kpi:{ dd:D.ddScore, capex:D.capex.total, revYr:rr.revDay*365, ebitdaYr:cs.pj.ebitdaYr, margin:cs.marginY,
+      npv:cs.pj.npv, irr:cs.pj.irr, dscr:cs.pj.dscr, payback:cs.pj.payback, cpo:lastCpo()||rr.opexDay/Math.max(1,rr.orders),
+      revM2:rr.revDay*365/S.site.areaM2, score:cs.score, verdict:cs.verdict }
+  };
+  renderScenarios(); renderLeft();
+}
+function loadScenario(slot){
+  const sc=S.scenarios[slot]; if(!sc)return;
+  Object.assign(S,{locKey:sc.cfg.locKey, loc:JSON.parse(JSON.stringify(sc.cfg.loc)), site:JSON.parse(JSON.stringify(sc.cfg.site)),
+    dd:JSON.parse(JSON.stringify(sc.cfg.dd)), mix:JSON.parse(JSON.stringify(sc.cfg.mix)), staff:JSON.parse(JSON.stringify(sc.cfg.staff)), autom:JSON.parse(JSON.stringify(sc.cfg.autom))});
+  recompute(); resetSim(); renderAll();
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   §10b SCENARIO EXPORT — copy any saved scenario (or all) as JSON.
+   ═══════════════════════════════════════════════════════════════════ */
+function showToast(msg){ let t=el('toast'); if(!t){ t=document.createElement('div'); t.id='toast'; document.body.appendChild(t); }
+  t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
+function copyText(txt, okMsg){
+  const done=()=>showToast(okMsg||'Copied to clipboard');
+  const fallback=()=>{ const ta=document.createElement('textarea'); ta.value=txt; ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); done(); }catch(e){ showToast('Copy failed — your browser blocked clipboard access'); } ta.remove(); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done,fallback); else fallback();
+}
+function scenarioPayload(sc,slot){
+  return { app:'warehouse-tycoon', format:'scenario', version:4, slot:String.fromCharCode(65+slot),
+    name:sc.name, savedAt:sc.saved, exportedAt:new Date().toISOString(),
+    kpi:sc.kpi, config:sc.cfg };
+}
+window.exportScenario=function(i){ const sc=S.scenarios[i]; if(!sc) return;
+  copyText(JSON.stringify(scenarioPayload(sc,i),null,2), 'Scenario '+String.fromCharCode(65+i)+' copied as JSON'); };
+window.exportAllScenarios=function(){ const list=S.scenarios.map((sc,i)=>sc?scenarioPayload(sc,i):null).filter(Boolean);
+  if(!list.length) return;
+  copyText(JSON.stringify({app:'warehouse-tycoon',format:'scenario-set',version:4,exportedAt:new Date().toISOString(),scenarios:list},null,2),
+    list.length+' scenario'+(list.length>1?'s':'')+' copied as JSON'); };
+
+/* ═══════════════════════════════════════════════════════════════════
+   §11 ISOMETRIC WORLD RENDERER  (§4 — "GTA for warehousing")
+   Painter's-algorithm 2.5D; camera pan/zoom; day/night; weather;
+   clickable zones/vehicles/workers → inspector card.
+   ═══════════════════════════════════════════════════════════════════ */
+const CAM = { x:0, y:-40, z:1, dragging:false, lx:0, ly:0 };
+const TILE=26, TILEH=13;
+function isoX(gx,gy){ return (gx-gy)*TILE; }
+function isoY(gx,gy,gz=0){ return (gx+gy)*TILEH - gz*TILE; }
+const DEPT_COLORS={ receiving:'#6FA3CC', putaway:'#8FBF6B', forklift:'#FFB020', picking:'#C58FCC', packing:'#E0C36B', dispatch:'#FF9B54', qc:'#5BD6C8', maintenance:'#E5484D', cleaning:'#9AA5B5', security:'#F2F7C8', supervisor:'#FFFFFF', admin:'#B9C4D4' };
+let WORLD={zones:[],rackBlocks:[]};
+function spawnWorld(){
+  // layout derives from config: building footprint, docks along south face, modules per active vertical
+  const W=34, Hh=22;                      // building grid size
+  WORLD={zones:[],rackBlocks:[], W, H:Hh};
+  const z=(id,name,gx,gy,w,h,color,info)=>WORLD.zones.push({id,name,gx,gy,w,h,color,info});
+  z('yardIn','Receiving yard',2,Hh+2,14,6,'#1a212e');
+  z('yardOut','Shipping yard',18,Hh+2,14,6,'#1a212e');
+  z('gate','Gatehouse',0,Hh+4,2,2,S.dd.gatehouse?'#2a3345':'#442222');
+  z('staging','Inbound staging',2,Hh-3,10,3,'#232c3d');
+  z('pack','Packing benches',20,Hh-3,8,3,'#2d3143');
+  z('dispatch','Dispatch lanes',28,Hh-3,5,3,'#33291d');
+  z('break','Break room',0,0,4,3,'#22303a');
+  z('office','Office / admin',30,0,4,3,'#2a2f42');
+  z('charge','AGV charging',14,Hh-3,3,3,S.autom.agv>0?'#1d3326':'#1a212e');
+  if(S.autom.conveyor||S.autom.sortation) z('conv','Conveyor / sortation',12,Hh-5,12,1.6,'#3a3320');
+  // rack modules per active vertical, width ∝ share
+  const sh=D.shares, keys=Object.keys(sh);
+  let gx=1; const totW=30;
+  keys.forEach(k=>{
+    const w=Math.max(2,Math.round(sh[k]*totW));
+    const v=VERTICALS[k];
+    WORLD.rackBlocks.push({k, name:v.name, gx, gy:4, w:Math.min(w,totW-gx+1), h:12, color:v.color, feature:v.feature});
+    gx+=w+1; if(gx>totW) gx=totW;
+  });
+  buildWorkers(); buildVehicles();
+}
+function zoneAnchor(id){ const z=WORLD.zones.find(z=>z.id===id); return z? {x:z.gx+z.w/2, y:z.gy+z.h/2} : {x:17,y:12}; }
+function rackAnchor(){ const r=WORLD.rackBlocks[Math.floor(RNG.r()*WORLD.rackBlocks.length)]; return r? {x:r.gx+RNG.r()*r.w, y:r.gy+RNG.r()*r.h} : {x:17,y:10}; }
+const DEPT_ROUTES={
+  receiving:()=>[zoneAnchor('yardIn'),zoneAnchor('staging')],
+  putaway:()=>[zoneAnchor('staging'),rackAnchor()],
+  forklift:()=>[zoneAnchor('staging'),rackAnchor(),zoneAnchor('dispatch')],
+  picking:()=>[rackAnchor(),rackAnchor(),zoneAnchor('pack')],
+  packing:()=>[zoneAnchor('pack'),{x:zoneAnchor('pack').x+1,y:zoneAnchor('pack').y}],
+  dispatch:()=>[zoneAnchor('pack'),zoneAnchor('dispatch'),zoneAnchor('yardOut')],
+  qc:()=>[rackAnchor(),zoneAnchor('staging')],
+  maintenance:()=>[zoneAnchor('charge'),rackAnchor(),zoneAnchor('office')],
+  cleaning:()=>[rackAnchor(),zoneAnchor('break'),rackAnchor()],
+  security:()=>[zoneAnchor('gate'),{x:zoneAnchor('gate').x+1,y:zoneAnchor('gate').y}],
+  supervisor:()=>[zoneAnchor('staging'),zoneAnchor('pack'),zoneAnchor('office')],
+  admin:()=>[zoneAnchor('office'),{x:zoneAnchor('office').x-1,y:zoneAnchor('office').y+1}],
+};
+function buildWorkers(){
+  SIM.workers=[];
+  const ratio = SIM.rosterToday>0? SIM.rosterToday/Math.max(1,S_totalHeads()) : 1;
+  let budget=64; // perf cap (§7); degrade gracefully by capping population
+  for(const dept in S.staff){
+    let n=Math.round(S.staff[dept]*ratio);
+    n=Math.min(n,budget); budget-=n;
+    for(let i=0;i<n;i++){
+      const wp=DEPT_ROUTES[dept]();
+      SIM.workers.push({dept, x:wp[0].x+RNG.r(), y:wp[0].y+RNG.r(), wps:wp, wi:0, speed:.010+RNG.r()*.006, fatigue:RNG.r()*.3, onBreak:false, lunch:i%2===0});
+    }
+  }
+}
+function buildVehicles(){
+  SIM.vehicles=[];
+  const nf=Math.min(S.staff.forklift,8);
+  for(let i=0;i<nf;i++) SIM.vehicles.push({kind:'forklift', x:6+RNG.r()*4, y:18+RNG.r()*2, wps:[zoneAnchor('staging'),rackAnchor()], wi:0, speed:.02, carrying:RNG.r()<.5});
+  for(let i=0;i<Math.min(S.autom.agv,10);i++) SIM.vehicles.push({kind:'agv', x:15, y:20, wps:[zoneAnchor('charge'),rackAnchor(),zoneAnchor('pack')], wi:0, speed:.028, charge:RNG.r()});
+}
+function moveAgent(a,dt){
+  if(a.onBreak) return;
+  const h=hourOf();
+  if(a.dept){ // two lunch sittings 12:00 / 12:30 — walk to break room, fatigue recovers
+    const onLunch = a.lunch ? (h>=12&&h<12.5) : (h>=12.5&&h<13);
+    if(onLunch){ const b=zoneAnchor('break'); a.seat=a.seat??RNG.range(-1.2,1.2);
+      const dx=b.x+a.seat-a.x, dy=b.y+a.seat*.4-a.y, d=Math.hypot(dx,dy);
+      if(d>0.3){ a.x+=dx/d*a.speed*dt*1.2; a.y+=dy/d*a.speed*dt*1.2; }
+      else a.fatigue=Math.max(0,a.fatigue-.0006*dt);
+      return; }
+  }
+  if(a.kind==='agv'){ // battery: drain on route, dock at charger below 20%
+    if(a.charging){ const c=zoneAnchor('charge');
+      const dx=c.x-a.x, dy=c.y-a.y, d=Math.hypot(dx,dy);
+      if(d>0.3){ a.x+=dx/d*a.speed*dt; a.y+=dy/d*a.speed*dt; }
+      else { a.charge=Math.min(1,a.charge+.0005*dt); if(a.charge>=1) a.charging=false; }
+      return; }
+    a.charge=Math.max(0,a.charge-.00004*dt); if(a.charge<=.2) a.charging=true;
+  }
+  const wp=a.wps[a.wi]; const dx=wp.x-a.x, dy=wp.y-a.y, d=Math.hypot(dx,dy);
+  const sp=a.speed*dt*(SIM.paused?0:1);
+  if(d<0.15){ a.wi=(a.wi+1)%a.wps.length; if(a.wi===0 && a.dept){ a.wps=DEPT_ROUTES[a.dept](); a.fatigue=Math.min(1,a.fatigue+.02);} if(a.kind){ a.wps=[zoneAnchor('staging'),rackAnchor(),zoneAnchor(a.kind==='agv'?'charge':'dispatch')]; a.carrying=!a.carrying; } }
+  else { a.x+=dx/d*sp; a.y+=dy/d*sp; }
+}
+/* ── draw primitives ── */
+function cube(ctx,gx,gy,w,h,z,top,left,right){
+  const x=isoX(gx,gy), y=isoY(gx,gy);
+  const x2=isoX(gx+w,gy), y2=isoY(gx+w,gy);
+  const x3=isoX(gx+w,gy+h), y3=isoY(gx+w,gy+h);
+  const x4=isoX(gx,gy+h), y4=isoY(gx,gy+h);
+  const zz=z*TILE;
+  ctx.fillStyle=top; ctx.beginPath(); ctx.moveTo(x,y-zz);ctx.lineTo(x2,y2-zz);ctx.lineTo(x3,y3-zz);ctx.lineTo(x4,y4-zz);ctx.closePath();ctx.fill();
+  if(z>0){ ctx.fillStyle=left; ctx.beginPath(); ctx.moveTo(x4,y4-zz);ctx.lineTo(x3,y3-zz);ctx.lineTo(x3,y3);ctx.lineTo(x4,y4);ctx.closePath();ctx.fill();
+    ctx.fillStyle=right; ctx.beginPath(); ctx.moveTo(x3,y3-zz);ctx.lineTo(x2,y2-zz);ctx.lineTo(x2,y2);ctx.lineTo(x3,y3);ctx.closePath();ctx.fill(); }
+}
+function shade(hex,f){ const n=parseInt(hex.slice(1),16); const r=clamp(((n>>16)&255)*f,0,255),g=clamp(((n>>8)&255)*f,0,255),b=clamp((n&255)*f,0,255); return `rgb(${r|0},${g|0},${b|0})`; }
+let hoverHit=null, selectedHit=null;
+function renderWorld(){
+  const cv=el('simCanvas'); if(!cv) return;
+  const dpr=window.devicePixelRatio||1, rect=cv.getBoundingClientRect();
+  if(cv.width!==rect.width*dpr){ cv.width=rect.width*dpr; cv.height=rect.height*dpr; }
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  // day/night sky
+  const h=hourOf(); const nite=clamp(Math.cos((h-13)/24*2*Math.PI)*.5+.5,0,1); // 0 midday → 1 midnight
+  ctx.fillStyle=`rgb(${lerp(16,7,nite)|0},${lerp(21,9,nite)|0},${lerp(30,14,nite)|0})`;
+  ctx.fillRect(0,0,rect.width,rect.height);
+  ctx.save();
+  ctx.translate(rect.width/2+CAM.x, rect.height/2+CAM.y); ctx.scale(CAM.z,CAM.z);
+  const W=WORLD.W||34,Hh=WORLD.H||22;
+  // ground slab + yard
+  cube(ctx,-1,-1,W+3,Hh+10,0,shade('#2a2f3d',1-nite*.45),'','');
+  // building floor
+  cube(ctx,0,0,W,Hh,0,shade('#3a4152',1-nite*.4),'','');
+  // zones (flat)
+  for(const z of WORLD.zones){ cube(ctx,z.gx,z.gy,z.w,z.h,0,shade(z.color,1-nite*.35),'',''); if(selectedHit&&selectedHit.type==='zone'&&selectedHit.ref===z){outline(ctx,z.gx,z.gy,z.w,z.h);} }
+  // dock doors along south face
+  for(let i=0;i<D.dockCount;i++){ const gx=2+i*(30/Math.max(1,D.dockCount));
+    if(nite>.45){ ctx.fillStyle='rgba(255,176,32,'+(0.11*nite).toFixed(3)+')'; ctx.beginPath(); ctx.arc(isoX(gx+.7,Hh-0.2), isoY(gx+.7,Hh-0.2)-10, 15,0,7); ctx.fill(); }
+    const tt=SIM.trucks.find(t=>t.dock===i&&['dock','departPrep'].includes(t.state));
+    const dc = tt? (tt.kind==='in'?'#6FA3CC':'#FF9B54') : '#FFB020';
+    cube(ctx,gx,Hh-0.4,1.4,0.4,0.8,dc,shade(dc,.6),shade(dc,.45));
+    if(CAM.z>0.75){ ctx.fillStyle='rgba(215,222,233,.55)'; ctx.font='7px monospace'; ctx.fillText('D'+(i+1), isoX(gx+.4,Hh-0.4), isoY(gx+.4,Hh-0.4)-TILE*1.05); } }
+  // depth-sorted drawables: racks, trucks, vehicles, workers, features
+  const draws=[];
+  for(const r of WORLD.rackBlocks){
+    const cap=Math.max(1, D.palletCap*(D.shares[r.k]||0));
+    const fill=clamp((SIM.inv[r.k]||0)/cap,0,1);
+    for(let row=0;row<3;row++){
+      const gy=r.gy+row*4;
+      draws.push({d:gy+r.gx, fn:()=>{ drawRackRow(ctx,r,gy,fill,nite); }});
+    }
+    if(r.feature) draws.push({d:r.gy+r.gx+0.1, fn:()=>drawFeature(ctx,r,nite)});
+  }
+  for(const t of SIM.trucks) draws.push({d:truckPos(t).gy+truckPos(t).gx, fn:()=>drawTruck(ctx,t,nite)});
+  for(const v of SIM.vehicles) draws.push({d:v.x+v.y, fn:()=>drawVehicle(ctx,v,nite)});
+  for(const w of SIM.workers) draws.push({d:w.x+w.y, fn:()=>drawWorker(ctx,w,nite)});
+  // props — pallet stacks in staging ∝ staged, cartons at pack ∝ packQ, containers on hardstand
+  const stZ=WORLD.zones.find(z=>z.id==='staging');
+  if(stZ){ const n=Math.min(14, Math.floor(SIM.staged/6));
+    for(let i=0;i<n;i++){ const gx=stZ.gx+.5+(i%7)*1.35, gy=stZ.gy+.35+Math.floor(i/7)*1.4;
+      draws.push({d:gx+gy, fn:()=>cube(ctx,gx,gy,.8,.8,.55,shade('#BF8B5E',.9-nite*.3),shade('#BF8B5E',.5),shade('#BF8B5E',.65))}); } }
+  const pkZ=WORLD.zones.find(z=>z.id==='pack');
+  if(pkZ){ const n=Math.min(10, Math.floor(SIM.packQ/8));
+    for(let i=0;i<n;i++){ const gx=pkZ.gx+.4+(i%5)*1.5, gy=pkZ.gy+.35+Math.floor(i/5)*1.4;
+      draws.push({d:gx+gy, fn:()=>cube(ctx,gx,gy,.6,.6,.45,shade('#E0C36B',.9-nite*.3),shade('#E0C36B',.5),shade('#E0C36B',.65))}); } }
+  if(S.dd.hardstand) [['#E5484D',Hh+2.4],['#6FA3CC',Hh+4.1]].forEach(([c,gy])=>
+    draws.push({d:32.6+gy, fn:()=>cube(ctx,32.6,gy,3,1.1,1.15,shade(c,.6-nite*.2),shade(c,.35),shade(c,.45))}));
+  const cvZ=WORLD.zones.find(z=>z.id==='conv');
+  if(cvZ) draws.push({d:cvZ.gx+cvZ.gy+60, fn:()=>{ ctx.strokeStyle='rgba(255,176,32,.7)'; ctx.lineWidth=2;
+    const off=(SIM.t/4)%1.2;
+    for(let x=off;x<cvZ.w-.4;x+=1.2){ const gx=cvZ.gx+x, gy=cvZ.gy+.8;
+      ctx.beginPath(); ctx.moveTo(isoX(gx,gy),isoY(gx,gy)-5); ctx.lineTo(isoX(gx+.5,gy),isoY(gx+.5,gy)-5); ctx.stroke(); } }});
+  draws.sort((a,b)=>a.d-b.d).forEach(o=>o.fn());
+  // rain
+  if(SIM.weather.rain){ ctx.strokeStyle='rgba(140,180,220,.35)'; ctx.lineWidth=1;
+    for(let i=0;i<70;i++){ const rx=(RNG.r()*2-1)*rect.width/CAM.z/1.6, ry=(RNG.r()*2-1)*rect.height/CAM.z/1.6; ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(rx-3,ry+9);ctx.stroke(); } }
+  ctx.restore();
+  // heat haze badge handled in wxOverlay
+}
+function outline(ctx,gx,gy,w,h){ ctx.strokeStyle='#FFB020'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(isoX(gx,gy),isoY(gx,gy)); ctx.lineTo(isoX(gx+w,gy),isoY(gx+w,gy)); ctx.lineTo(isoX(gx+w,gy+h),isoY(gx+w,gy+h)); ctx.lineTo(isoX(gx,gy+h),isoY(gx,gy+h)); ctx.closePath(); ctx.stroke(); }
+function drawRackRow(ctx,r,gy,fill,nite){
+  const lvls=D.pen.maxLevels, hgt=Math.min(lvls*0.55,4);
+  cube(ctx,r.gx,gy,r.w,1.2,hgt, shade(r.color,(0.55-nite*.2)), shade(r.color,.32), shade(r.color,.42));
+  // visible fill bars
+  const filled=Math.round(r.w*fill);
+  for(let i=0;i<filled;i++){ cube(ctx,r.gx+i,gy+.15,.8,.8,hgt*fill*.9, shade('#D7DEE9',.8-nite*.3), shade('#D7DEE9',.4), shade('#D7DEE9',.55)); }
+}
+function drawFeature(ctx,r,nite){
+  const cx=r.gx+r.w/2, cy=r.gy-1.2;
+  if(r.feature==='frost'||r.feature==='chill'){ // cold room shell with frost effect
+    cube(ctx,r.gx-.2,r.gy-.3,r.w+.4,4.6,4.4,'rgba(184,228,255,.16)','rgba(140,190,230,.22)','rgba(160,205,240,.2)');
+    ctx.fillStyle='rgba(220,240,255,.75)'; ctx.font='9px monospace'; ctx.fillText(r.feature==='frost'?'−18 °C':'0–4 °C', isoX(cx,cy)-14, isoY(cx,cy)-TILE*4.6);
+    for(let i=0;i<5;i++){ ctx.fillStyle='rgba(255,255,255,'+(.25+RNG.r()*.2)+')'; ctx.fillRect(isoX(r.gx+RNG.r()*r.w,r.gy+RNG.r()*3), isoY(r.gx,r.gy)-RNG.r()*40-30, 2,2); }
+  } else if(r.feature==='dgcage'){ cageAround(ctx,r,'#FF9B54','DG'); }
+  else if(r.feature==='hvcage'){ cageAround(ctx,r,'#5BD6C8','HV'); }
+  else if(r.feature==='goh'){ ctx.strokeStyle='#C58FCC'; ctx.lineWidth=1.5;
+    for(let i=0;i<3;i++){ const gy=r.gy+i*4+.5; ctx.beginPath(); ctx.moveTo(isoX(r.gx,gy),isoY(r.gx,gy)-TILE*2.4); ctx.lineTo(isoX(r.gx+r.w,gy),isoY(r.gx+r.w,gy)-TILE*2.4); ctx.stroke(); } }
+  else if(r.feature==='gdp'){ ctx.strokeStyle='rgba(242,247,200,.7)'; ctx.setLineDash([4,3]); outline(ctx,r.gx-.2,r.gy-.2,r.w+.4,12.4); ctx.setLineDash([]);
+    ctx.fillStyle='rgba(242,247,200,.8)'; ctx.font='8px monospace'; ctx.fillText('GDP 15–25 °C', isoX(r.gx,r.gy)-8, isoY(r.gx,r.gy)-TILE*3); }
+}
+function cageAround(ctx,r,color,tag){
+  ctx.strokeStyle=color; ctx.lineWidth=1;
+  for(let i=0;i<=r.w;i+=1){ ctx.beginPath(); ctx.moveTo(isoX(r.gx+i,r.gy),isoY(r.gx+i,r.gy)); ctx.lineTo(isoX(r.gx+i,r.gy),isoY(r.gx+i,r.gy)-TILE*1.6); ctx.stroke(); }
+  ctx.fillStyle=color; ctx.font='bold 9px monospace'; ctx.fillText('⚠ '+tag, isoX(r.gx,r.gy)-4, isoY(r.gx,r.gy)-TILE*1.9);
+}
+function truckPos(t){
+  const Hh=WORLD.H||22; const dockGx = t.dock>=0? 2+t.dock*(30/Math.max(1,D.dockCount)) : 8;
+  const map={ arrive:{gx:-4+t.t/60, gy:Hh+6}, queue:{gx:0.5+queueIdx(t)*2.2, gy:Hh+5.2}, gate:{gx:1, gy:Hh+4.5},
+    toDock:{gx:lerp(1,dockGx,Math.min(1,t.t/(70*D.truckTurnVar))), gy:Hh+2.2}, dock:{gx:dockGx, gy:Hh+1},
+    departPrep:{gx:dockGx, gy:Hh+1}, depart:{gx:dockGx+t.t/40, gy:Hh+4} };
+  return map[t.state]||{gx:0,gy:Hh+5};
+}
+function queueIdx(t){ return SIM.trucks.filter(o=>o.state==='queue'&&o.id<t.id).length; }
+function drawTruck(ctx,t,nite){
+  const p=truckPos(t); const c=t.kind==='in'?'#6FA3CC':'#FF9B54';
+  cube(ctx,p.gx,p.gy,2.6,1,1.1, shade(c,.85-nite*.3), shade(c,.5), shade(c,.65));          // trailer
+  cube(ctx,p.gx+2.6,p.gy,0.9,1,0.9, shade('#D7DEE9',.7-nite*.3), shade('#D7DEE9',.4), shade('#D7DEE9',.5)); // cab
+  if(t.state==='dock'){ ctx.fillStyle='#FFB020'; ctx.beginPath(); ctx.arc(isoX(p.gx+1.3,p.gy+.5), isoY(p.gx+1.3,p.gy+.5)-TILE*1.6+Math.sin(SIM.t/6)*2,2,0,7); ctx.fill(); }
+  if(t.smoke && ['queue','gate'].includes(t.state)){ ctx.fillStyle='rgba(200,200,200,.25)';
+    for(let i=0;i<3;i++) ctx.fillRect(isoX(p.gx+3.3,p.gy)+i, isoY(p.gx+3.3,p.gy)-TILE*1.4-i*4-((SIM.t/4+i*3)%12), 2,2); }
+  if(selectedHit&&selectedHit.type==='truck'&&selectedHit.ref===t) outline(ctx,p.gx,p.gy,3.5,1);
+  t._sx=isoX(p.gx+1.5,p.gy+.5); t._sy=isoY(p.gx+1.5,p.gy+.5)-TILE*.6;
+}
+function drawVehicle(ctx,v,nite){
+  moveAgent(v,1);
+  const c=v.kind==='agv'?'#5BD6C8':'#FFB020';
+  cube(ctx,v.x,v.y,0.8,0.6,0.5, shade(c,.85-nite*.3), shade(c,.5), shade(c,.65));
+  if(v.carrying&&!v.charging) cube(ctx,v.x+.1,v.y+.05,0.5,0.4,0.9, '#BF8B5E', shade('#BF8B5E',.5), shade('#BF8B5E',.65));
+  if(v.kind==='agv'){ const bx=isoX(v.x+.4,v.y+.3), by=isoY(v.x+.4,v.y+.3)-TILE*1.05;
+    if(v.charging){ ctx.fillStyle='#FFB020'; ctx.font='bold 9px monospace'; ctx.fillText('⚡'+Math.round(v.charge*100)+'%', bx-11, by-3+Math.sin(SIM.t/8)*1.5); }
+    ctx.fillStyle='#0A0D12'; ctx.fillRect(bx-6,by,12,2.5);
+    ctx.fillStyle=v.charge>.4?'#3FB950':v.charge>.2?'#FFB020':'#E5484D'; ctx.fillRect(bx-6,by,12*v.charge,2.5); }
+  if(selectedHit&&selectedHit.type==='vehicle'&&selectedHit.ref===v) outline(ctx,v.x,v.y,1,0.7);
+  v._sx=isoX(v.x+.4,v.y+.3); v._sy=isoY(v.x+.4,v.y+.3)-TILE*.3;
+}
+function drawWorker(ctx,w,nite){
+  moveAgent(w,1);
+  const c=DEPT_COLORS[w.dept]||'#fff';
+  const x=isoX(w.x,w.y), y=isoY(w.x,w.y);
+  ctx.fillStyle=shade('#2b2f3a',1-nite*.3); ctx.fillRect(x-2, y-10, 4, 8);   // body
+  ctx.fillStyle=c; ctx.fillRect(x-2, y-9, 4, 3);                             // vest = uniform
+  ctx.fillStyle='#e8c9a0'; ctx.beginPath(); ctx.arc(x,y-12,2.2,0,7); ctx.fill();
+  ctx.fillStyle='#FFB020'; ctx.fillRect(x-2.4,y-14.6,4.8,1.6);               // hard hat
+  // plumbob — health from fatigue+backlog pressure
+  const hp = clamp(1 - w.fatigue - (SIM.backlog>200?.25:0), 0, 1);
+  ctx.fillStyle = hp>.6?'#3FB950':hp>.3?'#FFB020':'#E5484D';
+  const by=y-19+Math.sin(SIM.t/5+w.x)*1.5;
+  ctx.beginPath(); ctx.moveTo(x,by-3);ctx.lineTo(x+2.4,by);ctx.lineTo(x,by+3);ctx.lineTo(x-2.4,by);ctx.closePath(); ctx.fill();
+  if(selectedHit&&selectedHit.type==='worker'&&selectedHit.ref===w){ ctx.strokeStyle='#FFB020'; ctx.strokeRect(x-5,y-17,10,17); }
+  w._sx=x; w._sy=y-8;
+}
+/* camera + hit-testing */
+function bindCanvas(){
+  const cv=el('simCanvas');
+  cv.addEventListener('mousedown',e=>{ CAM.dragging=true; CAM.lx=e.clientX; CAM.ly=e.clientY; cv.style.cursor='grabbing'; CAM.moved=false;});
+  window.addEventListener('mousemove',e=>{ if(!CAM.dragging)return; CAM.x+=e.clientX-CAM.lx; CAM.y+=e.clientY-CAM.ly; if(Math.abs(e.clientX-CAM.lx)+Math.abs(e.clientY-CAM.ly)>3)CAM.moved=true; CAM.lx=e.clientX; CAM.ly=e.clientY; });
+  window.addEventListener('mouseup',()=>{ CAM.dragging=false; cv.style.cursor='grab'; });
+  cv.addEventListener('wheel',e=>{ e.preventDefault(); CAM.z=clamp(CAM.z*(e.deltaY<0?1.1:0.9),0.4,3); },{passive:false});
+  cv.addEventListener('click',e=>{ if(CAM.moved)return; const r=cv.getBoundingClientRect();
+    const sx=(e.clientX-r.left-r.width/2-CAM.x)/CAM.z, sy=(e.clientY-r.top-r.height/2-CAM.y)/CAM.z;
+    selectedHit=hitTest(sx,sy); renderLeft(); });
+  let pinch0=0, tz0=1;
+  cv.addEventListener('touchstart',e=>{ if(e.touches.length===1){ CAM.dragging=true; CAM.lx=e.touches[0].clientX; CAM.ly=e.touches[0].clientY; CAM.moved=false; }
+    else if(e.touches.length===2){ CAM.dragging=false; pinch0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY)||1; tz0=CAM.z; } },{passive:true});
+  cv.addEventListener('touchmove',e=>{ e.preventDefault();
+    if(e.touches.length===1&&CAM.dragging){ CAM.x+=e.touches[0].clientX-CAM.lx; CAM.y+=e.touches[0].clientY-CAM.ly; CAM.lx=e.touches[0].clientX; CAM.ly=e.touches[0].clientY; CAM.moved=true; }
+    else if(e.touches.length===2){ const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY); CAM.z=clamp(tz0*d/pinch0,0.4,3); } },{passive:false});
+  cv.addEventListener('touchend',()=>{ CAM.dragging=false; });
+  el('btnZoomIn').onclick=()=>CAM.z=clamp(CAM.z*1.2,0.4,3);
+  el('btnZoomOut').onclick=()=>CAM.z=clamp(CAM.z/1.2,0.4,3);
+  el('btnCenter').onclick=()=>{CAM.x=0;CAM.y=-40;CAM.z=1;};
+}
+function hitTest(sx,sy){
+  const near=(px,py,r)=>Math.hypot(px-sx,py-sy)<r;
+  for(const w of SIM.workers) if(w._sx!==undefined&&near(w._sx,w._sy,10)) return {type:'worker',ref:w};
+  for(const v of SIM.vehicles) if(v._sx!==undefined&&near(v._sx,v._sy,12)) return {type:'vehicle',ref:v};
+  for(const t of SIM.trucks) if(t._sx!==undefined&&near(t._sx,t._sy,20)) return {type:'truck',ref:t};
+  // zones: invert iso approx — test center distance
+  for(const r of WORLD.rackBlocks){ const cx=isoX(r.gx+r.w/2,r.gy+6),cy=isoY(r.gx+r.w/2,r.gy+6); if(near(cx,cy,r.w*TILE*.6)) return {type:'rack',ref:r}; }
+  for(const z of WORLD.zones){ const cx=isoX(z.gx+z.w/2,z.gy+z.h/2),cy=isoY(z.gx+z.w/2,z.gy+z.h/2); if(near(cx,cy,Math.max(z.w,z.h)*TILE*.55)) return {type:'zone',ref:z}; }
+  return null;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   §12 CHART PRIMITIVES (canvas)
+   ═══════════════════════════════════════════════════════════════════ */
+function lineChart(cv, series, opts={}){
+  const dpr=window.devicePixelRatio||1, r=cv.getBoundingClientRect();
+  cv.width=r.width*dpr; cv.height=r.height*dpr;
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,r.width,r.height);
+  const pad={l:44,r:8,t:8,b:18};
+  const all=series.flatMap(s=>s.data); if(!all.length){ctx.fillStyle='#8A8272';ctx.font='11px monospace';ctx.fillText('run the simulation to populate',pad.l,r.height/2);return;}
+  let mn=Math.min(0,...all), mx=Math.max(...all,1); if(mx===mn)mx=mn+1;
+  const X=i=>pad.l+(r.width-pad.l-pad.r)*i/Math.max(1,series[0].data.length-1);
+  const Y=v=>r.height-pad.b-(r.height-pad.t-pad.b)*(v-mn)/(mx-mn);
+  ctx.strokeStyle='#EBE7DA'; ctx.fillStyle='#8A8272'; ctx.font='9px monospace';
+  for(let i=0;i<=4;i++){ const v=mn+(mx-mn)*i/4, y=Y(v); ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(r.width-pad.r,y);ctx.stroke(); ctx.fillText(opts.fmt?opts.fmt(v):fmtN(v),4,y+3); }
+  if(opts.zero&&mn<0){ ctx.strokeStyle='#C13A3A66'; ctx.beginPath();ctx.moveTo(pad.l,Y(0));ctx.lineTo(r.width-pad.r,Y(0));ctx.stroke(); }
+  if(opts.sla){ ctx.strokeStyle='#C13A3A'; ctx.setLineDash([4,4]); ctx.beginPath();ctx.moveTo(pad.l,Y(opts.sla));ctx.lineTo(r.width-pad.r,Y(opts.sla));ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle='#C13A3A'; ctx.fillText('SLA '+(opts.fmt?opts.fmt(opts.sla):opts.sla), r.width-70, Y(opts.sla)-4); }
+  series.forEach(s=>{ ctx.strokeStyle=s.color; ctx.lineWidth=1.6; ctx.beginPath();
+    s.data.forEach((v,i)=>{ i?ctx.lineTo(X(i),Y(v)):ctx.moveTo(X(i),Y(v)); }); ctx.stroke();
+    if(s.fill){ ctx.lineTo(X(s.data.length-1),Y(Math.max(mn,0))); ctx.lineTo(X(0),Y(Math.max(mn,0))); ctx.closePath(); ctx.fillStyle=s.color+'22'; ctx.fill(); } });
+}
+function barChart(cv, labels, values, colors, fmt){
+  const dpr=window.devicePixelRatio||1, r=cv.getBoundingClientRect();
+  cv.width=r.width*dpr; cv.height=r.height*dpr;
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,r.width,r.height);
+  const mx=Math.max(...values,1), bw=(r.width-50)/labels.length;
+  labels.forEach((l,i)=>{ const h=(r.height-30)*values[i]/mx;
+    ctx.fillStyle=colors[i]||'#3E7CA6'; ctx.fillRect(40+i*bw+3, r.height-20-h, bw-6, h);
+    ctx.fillStyle='#8A8272'; ctx.font='9px monospace'; ctx.save(); ctx.translate(40+i*bw+bw/2, r.height-8); ctx.textAlign='center'; ctx.fillText(l,0,0); ctx.restore();
+    ctx.fillStyle='#3A362C'; ctx.textAlign='center'; ctx.fillText(fmt?fmt(values[i]):fmtN(values[i]), 40+i*bw+bw/2, r.height-24-h); ctx.textAlign='left'; });
+}
+function tornadoChart(cv, sens){
+  const dpr=window.devicePixelRatio||1, r=cv.getBoundingClientRect();
+  cv.width=r.width*dpr; cv.height=r.height*dpr;
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,r.width,r.height);
+  const mx=Math.max(...sens.bars.flatMap(b=>[Math.abs(b.up),Math.abs(b.dn)]),1);
+  const cx=r.width/2, rowH=(r.height-24)/sens.bars.length;
+  ctx.strokeStyle='#B8B09C'; ctx.beginPath(); ctx.moveTo(cx,4); ctx.lineTo(cx,r.height-20); ctx.stroke();
+  sens.bars.forEach((b,i)=>{ const y=8+i*rowH;
+    ctx.fillStyle='#2F7D4699'; const w1=(Math.max(b.up,b.dn))/mx*(cx-70); const w2=(Math.min(b.up,b.dn))/mx*(cx-70);
+    ctx.fillRect(cx, y, Math.max(0,w1), rowH-12);
+    ctx.fillStyle='#C13A3A99'; ctx.fillRect(cx+Math.min(0,w2), y, Math.abs(Math.min(0,w2)), rowH-12);
+    ctx.fillStyle='#3A362C'; ctx.font='10px monospace'; ctx.fillText(b.lbl+' ±20%', 4, y+rowH/2);
+    ctx.fillStyle='#8A8272'; ctx.fillText(sgn$(Math.min(b.up,b.dn)), 4, y+rowH/2+11);
+    ctx.fillText(sgn$(Math.max(b.up,b.dn)), cx+(cx-70)*Math.max(0,Math.max(b.up,b.dn))/mx+6, y+rowH/2); });
+  ctx.fillStyle='#8A8272'; ctx.font='9px monospace'; ctx.textAlign='center'; ctx.fillText('Δ NPV vs base '+fmt$(sens.base), cx, r.height-6); ctx.textAlign='left';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   §13 UI — KPI ribbon, tabs, stage renderers, contextual left panel
+   ═══════════════════════════════════════════════════════════════════ */
+function updateHeader(){
+  const e=el('hdrLoc'); if(!e) return;
+  e.textContent=S.loc.name;
+  const h=Math.floor(hourOf()), m=Math.floor((SIM.t%3600)/60);
+  el('hdrClock').textContent='Day '+SIM.day+' · '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+' · '+MONTHS[SIM.month];
+  el('hdrDayPart').textContent=(h>=6&&h<18)?'☀ day':'☾ night';
+  el('hdrWeather').textContent=SIM.outage?'⚡ OUTAGE':SIM.weather.rain?'🌧 rain':SIM.weather.heat?'🔥 heatwave':'clear';
+  el('hdrWeather').className=(SIM.outage?'text-warn blink':SIM.weather.rain||SIM.weather.heat?'text-amber':'text-mut');
+}
+function kpiRibbon(){
+  const rr=runRate();
+  const util=SIM.started? SIM.pallets/Math.max(1,D.palletCap):0;
+  const kpis=[
+    ['Orders today', fmtN(Math.round(SIM.shippedToday))+' / '+fmtN(Math.round(SIM.ordersToday)), SIM.backlog>150?'warn':'ok'],
+    ['Backlog', fmtN(Math.round(SIM.backlog)), SIM.backlog>150?'warn':SIM.backlog>60?'amb':'ok'],
+    ['Utilization', (util*100).toFixed(1)+'%', util>.92?'warn':util>.5?'ok':'amb'],
+    ['Dock busy', (dockSat()*100).toFixed(0)+'%', dockSat()>.85?'warn':'ok'],
+    ['Cost / order', lastCpo()?fmt$(lastCpo()):'—', lastCpo()>D.pickFee*1.15?'warn':'ok'],
+    ['Revenue / day', fmt$(rr.revDay), 'std'],
+    ['EBITDA / day', fmt$(rr.revDay-rr.opexDay), rr.revDay>rr.opexDay?'ok':'warn'],
+    ['Cash (cum.)', fmt$(SIM.fin.cum), SIM.fin.cum>=0?'ok':'amb'],
+  ];
+  el('kpiRibbon').innerHTML=kpis.map(([l,v,c])=>`<div class="kpi-cell">
+    <div class="lbl">${l}</div>
+    <div class="num text-[15px] font-bold ${c==='warn'?'text-warn':c==='ok'?'text-ok':c==='amb'?'text-amber':'text-[#2E2B23]'}">${v}</div></div>`).join('');
+  const n=activeAdvice().length, b=el('advBadge');
+  b.textContent=n; b.classList.toggle('hidden',n===0);
+}
+function setTab(t){
+  S.tab=t;
+  try{ closeDrawer(); }catch(e){}
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
+  document.querySelectorAll('.stage-pane').forEach(p=>p.classList.add('hidden'));
+  const pane=el('stage-'+t); if(pane) pane.classList.remove('hidden');
+  try{ renderStage(); }catch(e){ console.error('renderStage['+t+']',e); if(typeof showToast==='function') showToast('That view hit an error — see console'); }
+  try{ renderLeft(); }catch(e){ console.error('renderLeft',e); }
+}
+function renderAll(){ recompute(); kpiRibbon(); renderStage(); renderLeft(); }
+function renderStage(){
+  ({setup:renderSetup, dd:renderDD, sim:renderSimUi, fin:renderFin, adv:renderAdv, rep:renderRep, scn:renderScenarios})[S.tab]();
+}
+/* ── generic input helpers (all inputs re-derive the model) ── */
+function numIn(val,cb,attrs=''){ return `<input type="number" value="${val}" ${attrs} onchange="(${cb})(+this.value);uiChanged()">`; }
+window.uiChanged=function(){ recompute(); if(SIM.started){ spawnWorld(); } kpiRibbon(); renderLeft(); if(S.tab!=='sim') renderStage(); };
+window.setMix=function(k,v){ S.mix[k]=+v; uiChanged(); const t=Object.values(S.mix).reduce((a,b)=>a+b,0); const e=el('mixTotal'); if(e){e.textContent=t+'%'; e.className='num font-bold '+(t===100?'text-ok':'text-warn');} };
+window.setDD=function(k,v){ const it=DD_ITEMS.find(i=>i.k===k); S.dd[k]= it.type==='chk'? v : (it.type==='num'? +v : v); uiChanged(); if(S.tab==='dd') renderDD(); };
+window.setLoc=function(k,v){ S.loc[k]=+v; S.custom=true; uiChanged(); };
+window.setLocFlag=function(k,v){ S.loc[k]=v; S.custom=true; uiChanged(); if(S.tab==='setup')renderSetup(); };
+window.pickLoc=function(key){ S.locKey=key; S.custom=false; S.loc=JSON.parse(JSON.stringify(LOCATIONS[key])); uiChanged(); renderSetup(); };
+window.setSite=function(k,v){ S.site[k]= k==='tenure'? v : +v; uiChanged(); if(k==='tenure'&&S.tab==='setup')renderSetup(); };
+window.setStaff=function(k,v){ S.staff[k]=+v; uiChanged(); };
+
+/* ── SETUP ── */
+function renderSetup(){
+  const sh=mixShares();
+  const locCards=Object.entries(LOCATIONS).map(([k,L])=>`
+    <div class="card loc-card p-3 ${S.locKey===k&&!S.custom?'sel':''}" onclick="pickLoc('${k}')">
+      <div class="flex items-center justify-between"><div class="font-bold text-[13px]">${L.name}</div><div class="lbl">${L.country}</div></div>
+      <div class="text-[11px] text-mut mb-2">${L.tag}</div>
+      <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 mono text-[10px]">
+        <span class="text-mut">Lease</span><span class="num text-right">$${L.leaseRate}/m²</span>
+        <span class="text-mut">Wage</span><span class="num text-right">$${L.wage}/hr</span>
+        <span class="text-mut">Port</span><span class="num text-right">${L.kmPort} km</span>
+        <span class="text-mut">Power</span><span class="num text-right">$${L.powerTariff}/kWh</span>
+        <span class="text-mut">Storage</span><span class="num text-right">$${L.storageBench}/pal/wk</span>
+        <span class="text-mut">Labor idx</span><span class="num text-right">${L.laborAvail}</span>
+      </div></div>`).join('');
+  const groups=[...new Set(LOC_FIELDS.map(f=>f[6]))];
+  const custom=groups.map(g=>`<div class="card p-3">
+    <div class="lbl mb-2">${g}</div>
+    <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
+    ${LOC_FIELDS.filter(f=>f[6]===g).map(([k,lbl,unit,mn,mx,st])=>`
+      <label class="text-[11px]"><span class="text-mut">${lbl}</span> <span class="lbl">${unit}</span>
+        <input type="number" value="${S.loc[k]}" min="${mn}" max="${mx}" step="${st}" onchange="setLoc('${k}',this.value)"></label>`).join('')}
+    ${g==='Regulatory'?`
+      <label class="text-[11px] flex items-center gap-2 mt-1"><input type="checkbox" ${S.loc.hazmatOK?'checked':''} onchange="setLocFlag('hazmatOK',this.checked)"><span class="text-mut">Hazmat permitted</span></label>
+      <label class="text-[11px] flex items-center gap-2 mt-1"><input type="checkbox" ${S.loc.coldOK?'checked':''} onchange="setLocFlag('coldOK',this.checked)"><span class="text-mut">Cold store permitted</span></label>
+      <label class="text-[11px] flex items-center gap-2 mt-1"><input type="checkbox" ${S.loc.curfew?'checked':''} onchange="setLocFlag('curfew',this.checked)"><span class="text-mut">22:00–06:00 curfew</span></label>
+      <label class="text-[11px]"><span class="text-mut">Zoning class</span><input type="text" value="${esc(S.loc.zoning)}" onchange="S.loc.zoning=this.value"></label>`:''}
+    </div></div>`).join('');
+  const mixRows=Object.keys(VERTICALS).map(k=>{
+    const v=VERTICALS[k], locked=vertLocked(k), share=S.mix[k]||0;
+    return `<div class="flex items-center gap-3 py-1.5 border-b border-line/50 ${locked.length?'opacity-55':''}">
+      <span class="w-3 h-3 rounded-sm flex-none" style="background:${v.color}"></span>
+      <div class="w-52 flex-none"><div class="text-[12px]">${v.name}</div>
+        <div class="lbl">${v.mode} · ${v.palletKg} kg · ${v.picks} picks/ord · ${v.equip}</div></div>
+      ${locked.length? `<div class="text-[10px] text-warn mono flex-1">🔒 ${locked.join(' · ')}</div>
+        <span class="num w-12 text-right text-mut">—</span>`
+      : `<input type="range" min="0" max="100" step="5" value="${share}" class="flex-1" oninput="setMix('${k}',this.value);this.nextElementSibling.textContent=this.value+'%'">
+        <span class="num w-12 text-right mono text-[12px]">${share}%</span>`}
+    </div>`; }).join('');
+  const tot=Object.values(S.mix).reduce((a,b)=>a+b,0);
+  el('stage-setup').innerHTML=`
+    <div class="lbl mb-2">Step 1 — Market presets (or build your own below)</div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">${locCards}</div>
+    <div class="lbl mb-2 flex items-center gap-2">Build my location — every parameter drives the model ${S.custom?'<span class="text-amber">● custom values active</span>':''}</div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 mb-6">${custom}</div>
+    <div class="hazard-thin mb-4"></div>
+    <div class="lbl mb-2">Step 2 — Product vertical mix <span class="ml-2">total: <span id="mixTotal" class="num font-bold ${tot===100?'text-ok':'text-warn'}">${tot}%</span> (shares are normalized in the model)</span></div>
+    <div class="card p-3 mb-6">${mixRows}</div>
+    <div class="text-[11px] text-mut">Locked verticals are excluded from the operating mix until their due-diligence gate is cleared — fix them in the DUE DILIGENCE tab. The floor layout, energy draw, insurance, rates and CapEx all re-derive from this mix.</div>`;
+}
+
+/* ── DUE DILIGENCE ── */
+function renderDD(){
+  const groups=[...new Set(DD_ITEMS.map(i=>i.g))];
+  const gauge=`<div class="card p-4 mb-4 flex flex-wrap items-center gap-5">
+    <div class="relative w-24 h-24 flex-none">
+      <svg viewBox="0 0 100 100" class="w-24 h-24 -rotate-90">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="#242D3E" stroke-width="10"/>
+        <circle cx="50" cy="50" r="42" fill="none" stroke="${D.ddScore>=75?'#3FB950':D.ddScore>=50?'#FFB020':'#E5484D'}" stroke-width="10"
+          stroke-dasharray="${D.ddScore*2.64} 264" stroke-linecap="round"/></svg>
+      <div class="absolute inset-0 flex items-center justify-center mono font-bold text-xl num">${D.ddScore}</div>
+    </div>
+    <div class="flex-1">
+      <div class="font-bold text-[14px] mb-1">Site readiness — ${D.ddScore>=75?'investment grade':D.ddScore>=50?'conditional':'not ready'}</div>
+      <div class="text-[11px] text-mut leading-relaxed">Weighted 0–100 across ${DD_ITEMS.length} inspected items. Every red/amber item below carries a live penalty already applied to the simulation and financials — hover the note under each item.</div>
+      <div class="mono text-[10px] mt-2 flex flex-wrap gap-x-4 gap-y-1">
+        <span>Max rack levels: <b class="num text-amber">${D.pen.maxLevels}</b></span>
+        <span>Unload multiplier: <b class="num ${D.pen.unloadMult>1?'text-warn':'text-ok'}">×${D.pen.unloadMult.toFixed(2)}</b></span>
+        <span>Required power: <b class="num ${D.pen.powerShort?'text-warn':'text-ok'}">${Math.round(D.reqKva)} kVA ${D.pen.powerShort?'— SHORT (automation locked)':''}</b></span>
+        <span>Occupancy: <b class="${D.pen.canOccupy?'text-ok':'text-warn'}">${D.pen.canOccupy?'CLEARED':'BLOCKED'}</b></span>
+      </div></div></div>`;
+  const cols=groups.map(g=>`<div class="card p-3">
+    <div class="lbl mb-2 flex items-center gap-2"><span class="hazard-thin w-5 inline-block"></span>${g}</div>
+    ${DD_ITEMS.filter(i=>i.g===g).map(i=>{
+      const s=D.ddScores[i.k], tl=s>=.75?'tl-g':s>=.45?'tl-y':'tl-r';
+      let ctrl='';
+      if(i.type==='num') ctrl=`<input type="number" class="!w-24" value="${S.dd[i.k]}" min="${i.min}" max="${i.max}" step="${i.step}" onchange="setDD('${i.k}',this.value)"> <span class="lbl">${i.unit||''}</span>`;
+      else if(i.type==='sel') ctrl=`<select class="!w-36" onchange="setDD('${i.k}',this.value)">${i.opts.map(o=>`<option ${S.dd[i.k]===o?'selected':''}>${o}</option>`).join('')}</select>`;
+      else ctrl=`<input type="checkbox" ${S.dd[i.k]?'checked':''} onchange="setDD('${i.k}',this.checked)">`;
+      return `<div class="flex items-center gap-2 py-1.5 border-b border-line/40">
+        <span class="tl ${tl}"></span>
+        <div class="flex-1"><div class="text-[12px]">${i.label}</div>${i.note?`<div class="lbl normal-case tracking-normal">${i.note}</div>`:''}</div>
+        <div class="flex items-center gap-1 flex-none">${ctrl}</div></div>`; }).join('')}
+    </div>`).join('');
+  el('stage-dd').innerHTML=gauge+`<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">${cols}</div>`;
+}
+
+/* ── FLOOR SIM overlay bits ── */
+const UIC={};                                    // per-element innerHTML cache — never
+function setHTML(id,html){ if(UIC[id]===html) return; UIC[id]=html; const e=el(id); if(e) e.innerHTML=html; }   // destroy a button mid-tap
+function renderSimUi(){
+  // speed buttons: build once, then only toggle the active class (stable DOM = reliable taps)
+  const seg=el('speedSeg');
+  if(seg.childElementCount!==SIM.speeds.length) seg.innerHTML=SIM.speeds.map(s=>`<button data-s="${s}" onclick="setSpeed(${s})">${s}×</button>`).join('');
+  [...seg.children].forEach(b=>b.classList.toggle('on',+b.dataset.s===SIM.speed));
+  const pb=el('btnPause'), pt=SIM.paused?'▶':'⏸'; if(pb.textContent!==pt) pb.textContent=pt;
+  const sb=el('btnSound'); if(sb){ const st=SND.on?'🔊':'🔇'; if(sb.textContent!==st) sb.textContent=st; if(!sb.onclick) sb.onclick=window.toggleSound; }
+  setHTML('simLegend',`<div class="lbl mb-1">Departments</div>`+Object.entries(DEPT_COLORS).map(([d,c])=>`<div class="flex items-center gap-1.5"><span class="w-2 h-2 inline-block rounded-sm" style="background:${c};box-shadow:inset 0 0 0 1px rgba(60,50,30,.35)"></span>${d}</div>`).join(''));
+  const wx=el('wxOverlay');
+  const msg=SIM.outage?'⚡ GRID OUTAGE — ops halted':SIM.weather.rain?'🌧 Rain — yard ops slowed':SIM.weather.heat?'🔥 Heatwave — energy +12%':'';
+  wx.classList.toggle('hidden',!msg); wx.textContent=msg; wx.className='absolute top-3 left-1/2 -translate-x-1/2 ovl px-3 py-1.5 text-[11px] font-medium no-print '+(SIM.outage?'text-warn blink':'text-amber');
+  const ds=el('dockStrip');
+  if(ds) setHTML('dockStrip','<div class="lbl mb-1">Dock board · <span class="text-steel">in</span> / <span class="text-[#C96442]">out</span></div><div class="flex gap-1 flex-wrap max-w-[190px]">'
+    +[...Array(D.dockCount).keys()].map(i=>{
+      const t=SIM.trucks.find(o=>o.dock===i&&['toDock','dock','departPrep'].includes(o.state));
+      const st=t? (t.kind==='in'?'background:#3E7CA6;color:#fff':'background:#E07B3C;color:#fff') : 'background:#ECE9DE;color:#8A8272';
+      return '<span class="px-1 rounded num" style="'+st+'" title="'+(t?((t.kind==='in'?'inbound #':'outbound #')+t.id+(t.state==='dock'?' — working':' — approaching')):'free')+'">D'+(i+1)+'</span>';
+    }).join('')+'</div>');
+}
+window.setSpeed=s=>{ SIM.speed=s; renderSimUi(); };
+
+/* ── FINANCIALS ── */
+function renderFin(){
+  const rr=runRate(), pj=npvIrr(project5y()), sens=sensitivity();
+  const C=D.capex;
+  // per-vertical contribution: labor by pick intensity, insurance by value at risk, energy by profile intensity
+  const dvol=S.site.areaM2*Math.min(S.dd.clearHeight,12);
+  const pickSum=Object.entries(D.shares).reduce((a,[k,sh])=>a+sh*VERTICALS[k].picks,0)||1;
+  const invT=Math.max(1,Object.entries(D.shares).reduce((a,[k,sh])=>a+(SIM.started?(SIM.inv[k]||0):D.basePallets*sh)*VERTICALS[k].valueDensity,0));
+  const drill=Object.entries(D.shares).map(([k,sh])=>{ const v=VERTICALS[k];
+    const pal=SIM.started?(SIM.inv[k]||0):D.basePallets*sh;
+    const stor=pal*S.loc.storageBench*v.storMult*52;
+    const hand=rr.orders*sh*S.loc.pickBench*v.handMult*365;
+    const labor=rr.laborDay*365*(sh*v.picks/pickSum)*0.62;
+    const energy=sh*v.energyInt*dvol*365*D.powerTariffEff;
+    const shrink=pal*v.valueDensity*(v.shrink+D.pen.shrinkAdd);
+    const ins=D.insuranceYr*(pal*v.valueDensity/invT);
+    const contrib=stor+hand-labor-energy-shrink-ins;
+    return {k,v,pal,stor,hand,labor,energy,shrink,ins,contrib,cm:contrib/Math.max(1,stor+hand)};
+  }).sort((a,b)=>b.contrib-a.contrib);
+  const dt=drill.reduce((a,d)=>({stor:a.stor+d.stor,hand:a.hand+d.hand,labor:a.labor+d.labor,energy:a.energy+d.energy,shrink:a.shrink+d.shrink,ins:a.ins+d.ins,contrib:a.contrib+d.contrib}),{stor:0,hand:0,labor:0,energy:0,shrink:0,ins:0,contrib:0});
+  el('stage-fin').innerHTML=`
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2 mb-4">
+      ${[['Total CapEx',fmt$(C.total)],['Equity in',fmt$(D.equity)],['NPV @'+S.site.discountRate+'%',fmt$(pj.npv)],['IRR',isNaN(pj.irr)?'n/a':(pj.irr*100).toFixed(1)+'%'],
+        ['Payback',pj.payback?pj.payback+' mo':'>60 mo'],['Break-even',pj.breakeven?'month '+pj.breakeven:'—'],['DSCR (yr 1)',pj.dscr===Infinity?'no debt':pj.dscr.toFixed(2)+'×'],['Rev / m²',fmt$(rr.revDay*365/S.site.areaM2)+'/yr'],
+        ['EBITDA margin',((rr.revDay-rr.opexDay)/Math.max(1,rr.revDay)*100).toFixed(1)+'%'],['Units / labor hr',uphNow().toFixed(1)+' u/hr'],
+        ['SLA on-time (7 d)',(slaOnTime()*100).toFixed(1)+'%'],['SLA credits','−'+fmt$((1-slaOnTime())*rr.orders*D.pickFee*0.5)+'/day']]
+        .map(([l,v])=>`<div class="card p-2"><div class="lbl">${l}</div><div class="num font-bold text-[14px] mt-0.5">${v}</div></div>`).join('')}
+    </div>
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-3 mb-3">
+      <div class="card p-3"><div class="lbl mb-1">Cumulative cash flow ($, from −equity)</div><canvas id="chCash" class="w-full h-44"></canvas></div>
+      <div class="card p-3"><div class="lbl mb-1">Cost per order — 60-day trend vs pick fee</div><canvas id="chCpo" class="w-full h-44"></canvas></div>
+      <div class="card p-3"><div class="lbl mb-1">OpEx by category ($/day, trailing 30d)</div><canvas id="chOpex" class="w-full h-44"></canvas></div>
+      <div class="card p-3"><div class="lbl mb-1">Sensitivity — Δ NPV, ±20% each driver (tornado)</div><canvas id="chTorn" class="w-full h-44"></canvas></div>
+    </div>
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
+      <div class="card p-3 overflow-x-auto"><div class="lbl mb-2">CapEx build-up</div><table class="w-full mono num">
+        ${[['Land / entry',C.landOrEntry],['Fit-out & compliance CapEx (mix-driven)',C.fitout],['Racking ('+fmtN(D.palletCap)+' positions)',C.racking],['Equipment & automation',C.equipment],['Remediation / permits',C.compliance],['Less govt incentives',-S.loc.govtIncentive*1000]]
+          .map(([l,v])=>`<tr class="border-b border-line/40"><td class="text-mut">${l}</td><td class="text-right">${fmt$(v)}</td></tr>`).join('')}
+        <tr class="font-bold text-amber"><td>Total</td><td class="text-right">${fmt$(C.total)}</td></tr>
+        <tr><td class="text-mut">Debt @ ${S.site.debtLVR}% LVR, ${S.site.debtRate}%, ${S.site.debtTermYr} yr</td><td class="text-right">${fmt$(D.debt)} (${fmt$(D.debtSvcMo)}/mo)</td></tr></table></div>
+      <div class="card p-3 overflow-x-auto"><div class="lbl mb-2">Revenue by vertical ($/yr est.) & unit economics</div><table class="w-full mono num">
+        ${Object.entries(D.shares).map(([k,s])=>{const v=VERTICALS[k];
+          const palK=SIM.started?(SIM.inv[k]||0):D.basePallets*s;
+          const stor=palK*S.loc.storageBench*v.storMult*52, hand=D.baseOrders*s*S.loc.pickBench*v.handMult*365;
+          return `<tr class="border-b border-line/40"><td><span class="w-2 h-2 inline-block rounded-sm mr-1" style="background:${v.color}"></span>${v.name} <span class="text-mut">${(s*100).toFixed(0)}%</span></td><td class="text-right">${fmt$(stor+hand)}</td></tr>`}).join('')}
+        <tr><td class="text-mut">Blended storage rate</td><td class="text-right">${fmt$(D.storRate)}/pallet/wk</td></tr>
+        <tr><td class="text-mut">Blended pick fee</td><td class="text-right">${fmt$(D.pickFee)}/order</td></tr>
+        <tr><td class="text-mut">Linehaul in / out</td><td class="text-right">${fmt$(D.linehaulIn)} / ${fmt$(D.linehaulOut)} per pallet</td></tr>
+        <tr><td class="text-mut">Insurance</td><td class="text-right">${fmt$(D.insuranceYr)}/yr</td></tr></table></div>
+    </div>
+    <div class="card p-3 mt-3 overflow-x-auto">
+      <div class="lbl mb-2">P&L drill-down by vertical — annualized contribution from live stock pools & rates</div>
+      <table class="w-full mono num min-w-[720px]">
+        <tr class="lbl"><th class="text-left">Vertical</th><th class="text-right">Pallets</th><th class="text-right">Storage rev</th><th class="text-right">Handling rev</th><th class="text-right">Labor alloc</th><th class="text-right">Energy</th><th class="text-right">Shrink</th><th class="text-right">Insurance</th><th class="text-right">Contribution</th><th class="text-right">CM%</th></tr>
+        ${drill.map(d=>`<tr class="border-b border-line/40">
+          <td><span class="w-2 h-2 inline-block rounded-sm mr-1" style="background:${d.v.color}"></span>${d.v.name}</td>
+          <td class="text-right">${fmtN(Math.round(d.pal))}</td><td class="text-right">${fmt$(d.stor)}</td><td class="text-right">${fmt$(d.hand)}</td>
+          <td class="text-right text-mut">−${fmt$(d.labor)}</td><td class="text-right text-mut">−${fmt$(d.energy)}</td>
+          <td class="text-right text-mut">−${fmt$(d.shrink)}</td><td class="text-right text-mut">−${fmt$(d.ins)}</td>
+          <td class="text-right font-bold ${d.contrib>=0?'text-ok':'text-warn'}">${fmt$(d.contrib)}</td>
+          <td class="text-right ${d.cm>=.25?'text-ok':d.cm>=0?'text-amber':'text-warn'}">${(d.cm*100).toFixed(0)}%</td></tr>`).join('')}
+        <tr class="font-bold text-amber"><td>Total contribution</td><td></td>
+          <td class="text-right">${fmt$(dt.stor)}</td><td class="text-right">${fmt$(dt.hand)}</td>
+          <td class="text-right">−${fmt$(dt.labor)}</td><td class="text-right">−${fmt$(dt.energy)}</td>
+          <td class="text-right">−${fmt$(dt.shrink)}</td><td class="text-right">−${fmt$(dt.ins)}</td>
+          <td class="text-right">${fmt$(dt.contrib)}</td><td></td></tr>
+      </table>
+      <div class="text-[10px] text-mut mt-1.5">Labor allocated by pick intensity (62% of the roster is pick/pack-facing); insurance by stock value at risk; energy by profile intensity. Facility fixed costs — lease ${fmt$(D.leaseDay*365)}/yr, maintenance, admin — sit below contribution.</div>
+    </div>
+    ${monthlyPnlCard()}`;
+  lineChart(el('chCash'),[{data:cumSeries(),color:'#C96442',fill:true}],{zero:true,fmt:fmt$});
+  lineChart(el('chCpo'),[{data:SIM.cpoTrend.filter(x=>x>0),color:'#3E7CA6'}],{sla:D.pickFee,fmt:fmt$});
+  const days=SIM.fin.days.slice(-30);
+  const lab=days.length?days.reduce((a,d)=>a+d.labor,0)/days.length:D.laborDay;
+  const en=days.length?days.reduce((a,d)=>a+d.energy,0)/days.length:(D.refrigKwhDay+D.lightKwhDay)*D.powerTariffEff;
+  const oth=days.length?days.reduce((a,d)=>a+d.other,0)/days.length:D.leaseDay+D.maintDay+D.insuranceYr/365+D.adminDay;
+  barChart(el('chOpex'),['labor','energy','lease','maint','insur','admin','other'],
+    [lab,en,D.leaseDay,D.maintDay,D.insuranceYr/365,D.adminDay,Math.max(0,oth-D.leaseDay-D.maintDay-D.insuranceYr/365-D.adminDay)],
+    ['#9B6DA3','#C96442','#3E7CA6','#8A8272','#2E9187','#B8A97E','#B0A893'],fmt$);
+  tornadoChart(el('chTorn'),sens);
+}
+function pnlRow(m,label,cls){
+  const marg=m.rev>0?(m.rev-m.opex)/m.rev:0, cpo=m.orders>0?m.opex/m.orders:0, net=(m.rev-m.opex)-(m.debtSvc||D.debtSvcMo);
+  return `<tr class="border-b border-line/40 ${cls||''}"><td class="text-mut whitespace-nowrap">${label}</td>
+    <td class="text-right">${fmt$(m.rev)}</td><td class="text-right text-mut">−${fmt$(m.labor||0)}</td>
+    <td class="text-right text-mut">−${fmt$(m.energy||0)}</td><td class="text-right text-mut">−${fmt$(m.other||0)}</td>
+    <td class="text-right font-semibold ${m.rev-m.opex>=0?'text-ok':'text-warn'}">${fmt$(m.rev-m.opex)}</td>
+    <td class="text-right ${marg>=.1?'text-ok':marg>=0?'text-amber':'text-warn'}">${(marg*100).toFixed(1)}%</td>
+    <td class="text-right text-mut">−${fmt$(m.debtSvc||D.debtSvcMo)}</td>
+    <td class="text-right font-semibold ${net>=0?'text-ok':'text-warn'}">${fmt$(net)}</td>
+    <td class="text-right">${fmtN(Math.round(m.orders))}</td><td class="text-right">${cpo?fmt$(cpo):'—'}</td></tr>`;
+}
+function monthlyPnlCard(){
+  const f=SIM.fin, months=f.months.slice(-12);
+  const dim=(SIM.day-1)%30;                       // days into the open month
+  let mtd=null;
+  if(SIM.started && dim>0 && f.days.length){ const dd=f.days.slice(-dim);
+    mtd={rev:0,opex:0,orders:0,labor:0,energy:0,other:0};
+    dd.forEach(d=>{mtd.rev+=d.rev;mtd.opex+=d.opex;mtd.orders+=d.orders;mtd.labor+=d.labor;mtd.energy+=d.energy;mtd.other+=d.other});
+    mtd.debtSvc=D.debtSvcMo*dim/30; }
+  return `<div class="card p-3 mt-3 overflow-x-auto">
+    <div class="lbl mb-2">Monthly P&L statements — closed months plus the month in progress</div>
+    ${months.length||mtd?`<table class="w-full num min-w-[760px]">
+      <tr class="lbl"><th class="text-left">Month</th><th class="text-right">Revenue</th><th class="text-right">Labor</th><th class="text-right">Energy</th><th class="text-right">Other opex</th><th class="text-right">EBITDA</th><th class="text-right">Margin</th><th class="text-right">Debt svc</th><th class="text-right">Net cash</th><th class="text-right">Orders</th><th class="text-right">CPO</th></tr>
+      ${months.slice().reverse().map(m=>pnlRow(m, MONTHS[m.month%12]+' · M'+(m.month+1))).join('')}
+      ${mtd?pnlRow(mtd, MONTHS[SIM.month]+' · to date ('+dim+' d)','opacity-70 italic'):''}
+    </table>
+    <div class="text-[10px] text-mut mt-1.5">Each statement closes on a 30-day cycle. Net cash = EBITDA less scheduled debt service${months.length>12?' · showing the last 12 months':''}.</div>`
+    :`<div class="text-[12px] text-mut py-3">No months closed yet — run the live floor for 30 simulated days and the first statement lands here.</div>`}
+  </div>`;
+}
+function cumSeries(){ let c=-D.equity; const out=[c]; SIM.fin.days.forEach(d=>{c+=d.rev-d.opex-D.debtSvcMo/30.4; out.push(c);}); return out; }
+
+/* ── AI ADVISOR ── */
+function renderAdv(){
+  const cards=activeAdvice();
+  const done=ADVISOR_RULES.filter(r=>S.advisorDone[r.id]);
+  el('stage-adv').innerHTML=`
+    <div class="lbl mb-3">Advisor watches live KPIs — every card shows the payback math that justifies it</div>
+    ${cards.length? cards.map(r=>{const pb=r.payback();return `
+      <div class="card adv-card p-4 mb-3 border-l-4 border-l-amber max-w-3xl">
+        <div class="flex items-start justify-between gap-3">
+          <div><div class="font-bold text-[14px]">${r.title}</div>
+          <div class="text-[12px] text-[#5B5546] mt-1 leading-relaxed">${r.why()}</div>
+          <div class="mono text-[11px] mt-2 text-mut">CapEx <b class="text-amber num">${fmt$(r.capex())}</b>
+            ${pb.months?` · est. saving <b class="text-ok num">${fmt$(pb.save)}/yr</b> · payback <b class="num">${pb.months} months</b>`:pb.note?` · ${pb.note}`:''}</div></div>
+          <div class="flex flex-col gap-1.5 flex-none">
+            <button class="btn btn-amber text-[11px]" onclick="advImplement('${r.id}')">Implement</button>
+            <button class="btn text-[11px]" onclick="advDismiss('${r.id}')">Dismiss</button></div>
+        </div></div>`;}).join('')
+      : `<div class="card p-6 max-w-3xl text-center text-mut text-[13px]">No open recommendations — KPIs are inside thresholds. Run the simulation faster or stress the mix to surface opportunities.</div>`}
+    ${done.length?`<div class="lbl mt-5 mb-2">Implemented</div>${done.map(r=>`<div class="card p-2.5 mb-2 max-w-3xl text-[12px] text-mut">✓ ${r.title} — capitalized ${fmt$(r.capex())}</div>`).join('')}`:''}
+    <div class="lbl mt-5 mb-2">Event log</div>
+    <div class="card p-3 max-w-3xl mono text-[11px] space-y-1 max-h-60 overflow-y-auto">
+      ${SIM.events.length?SIM.events.map(e=>`<div class="${e.cls==='bad'?'text-warn':e.cls==='warn'?'text-amber':'text-mut'}"><span class="text-mut">[${e.t}]</span> ${esc(e.msg)}</div>`).join(''):'<div class="text-mut">no events yet</div>'}</div>`;
+}
+window.advImplement=id=>{ const r=ADVISOR_RULES.find(r=>r.id===id); r.apply(); S.advisorDone[id]=true; recompute(); if(SIM.started)spawnWorld(); logEvent('Advisor action implemented: '+r.title,'ok'); renderAdv(); kpiRibbon(); };
+window.advDismiss=id=>{ S.advisorDismissed[id]=true; renderAdv(); kpiRibbon(); };
+
+/* ── INVESTOR REPORT ── */
+function renderRep(){
+  const cs=confidenceScore(), rr=cs.rr, pj=cs.pj, sens=sensitivity(), L=S.loc;
+  const yrs=[0,1,2,3,4].map(y=>{ const cf=project5y().slice(y*12,(y+1)*12);
+    return {rev:cf.reduce((a,c)=>a+c.rev,0), opex:cf.reduce((a,c)=>a+c.opex,0), ebitda:cf.reduce((a,c)=>a+c.ebitda,0), cash:cf.reduce((a,c)=>a+c.cash,0)};});
+  const risks=[
+    [L.riskCyclone>.4,'Cyclone / severe storm exposure','Hardened roof spec, parametric cover, elevated dock seals',L.riskCyclone],
+    [L.riskFlood>.4,'Flood plain exposure','Stock floor-height rules, pumps, flood insurance rider',L.riskFlood],
+    [S.dd.permits!=='Approved','Permit risk — '+S.dd.permits,'Condition precedent in lease; '+L.approvalWeeks+' wk approval path',.6],
+    [L.laborAvail<.6,'Thin labor market ('+L.laborAvail+')','Shift premiums, shuttle service, automation offset',.7],
+    [D.pen.powerShort,'Power supply short of load','Substation upgrade CapEx before automation phase',.8],
+    [dockSat()>.85,'Dock saturation at design volume','Add-dock program (expansion land: '+S.dd.spareLand+'%)',.6],
+    [energyShare()>.25,'Energy cost concentration','Solar PPA (index '+L.solarIdx+'), tariff hedging',.5],
+  ].filter(r=>r[0]);
+  const vc=cs.verdict==='GO'?'text-ok':cs.verdict==='CONDITIONAL'?'text-amber':'text-warn';
+  el('stage-rep').innerHTML=`
+  <div class="flex items-center gap-3 mb-3 no-print">
+    <button class="btn btn-amber text-[12px]" onclick="window.print()">⎙ Print / save PDF</button>
+    <span class="text-[11px] text-mut">Compiled live from current inputs & trailing simulation data</span></div>
+  <div class="report-doc rounded-md p-4 md:p-6 max-w-4xl mx-auto space-y-5">
+    <div><div class="hazard-thin mb-3"></div>
+      <div class="lbl">Investment committee paper — illustrative model, not financial advice</div>
+      <h1 class="text-xl font-bold mt-1">${esc(L.name)} — ${(S.site.areaM2/1000).toFixed(0)},000 m² 3PL facility</h1>
+      <div class="mono text-[11px] text-mut">Tenure: ${S.site.tenure} · Mix: ${Object.entries(D.shares).map(([k,s])=>VERTICALS[k].name.split(' ')[0]+' '+(s*100).toFixed(0)+'%').join(' · ')}</div></div>
+    <div class="flex items-center gap-5 card p-4">
+      <div class="text-center flex-none"><div class="num font-bold text-4xl ${vc}">${cs.score}</div><div class="lbl">confidence / 100</div></div>
+      <div class="flex-1"><div class="font-bold text-lg ${vc}">${cs.verdict}${cs.override?' — '+esc(cs.override):''}</div>
+        <div class="text-[12px] text-mut mt-1">Weighted: ${cs.comp.map(c=>`${c.k} ${(c.w*100)}%`).join(' · ')}</div></div></div>
+    <div><div class="lbl mb-1.5">Executive summary</div>
+      <p class="text-[13px] leading-relaxed">${esc(L.name)} offers ${L.tag.toLowerCase()} positioning with a due-diligence score of ${D.ddScore}/100.
+      The configured ${fmtN(D.palletCap)}-position facility models ${fmt$(rr.revDay*365)} annual revenue at a ${(cs.marginY*100).toFixed(1)}% EBITDA margin,
+      returning ${isNaN(pj.irr)?'sub-hurdle':'a '+(pj.irr*100).toFixed(1)+'%'} equity IRR against total CapEx of ${fmt$(D.capex.total)}
+      (${fmt$(D.equity)} equity after ${S.site.debtLVR}% LVR debt). DSCR of ${pj.dscr===Infinity?'n/a (ungeared)':pj.dscr.toFixed(2)+'×'} ${pj.dscr>1.5?'clears':'is below'} the 1.5× covenant norm.
+      Break-even is modeled in month ${pj.breakeven||'>60'}; equity payback in ${pj.payback?pj.payback+' months':'beyond the 5-year window'}.</p></div>
+    <div><div class="lbl mb-1.5">Site scorecard</div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-2">${cs.comp.map(c=>`<div class="card p-2.5"><div class="lbl">${c.k}</div>
+        <div class="flex items-center gap-2 mt-1"><div class="flex-1 h-1.5 bg-line rounded"><div class="h-1.5 rounded" style="width:${c.v*100}%;background:${c.v>.7?'#3FB950':c.v>.4?'#FFB020':'#E5484D'}"></div></div>
+        <span class="num mono text-[11px]">${(c.v*100).toFixed(0)}</span></div><div class="text-[10px] text-mut mt-1">${c.why}</div></div>`).join('')}</div></div>
+    <div><div class="lbl mb-1.5">Location rationale</div>
+      <p class="text-[12px] text-[#5B5546] leading-relaxed">Access: seaport ${L.kmPort} km, intermodal ${L.kmRail} km, motorway ${L.kmMwy} km → modeled linehaul ${fmt$(D.linehaulIn)}/pallet in, ${fmt$(D.linehaulOut)}/pallet out.
+      Labor: $${L.wage}/hr base (availability index ${L.laborAvail}, loading ×${L.unionLoad}). Power $${L.powerTariff}/kWh with ${L.gridOutage} outage-hrs/yr.
+      Market: storage benchmark $${L.storageBench}/pallet/wk, pick $${L.pickBench}/order, competitor vacancy ${L.vacancyRate}%. Peak congestion +${L.congestMin} min/turn.</p></div>
+    <div><div class="lbl mb-1.5">5-year P&L (modeled, incl. yr-1 ramp & seasonality)</div>
+      <div class="overflow-x-auto"><table class="w-full mono num min-w-[520px]"><tr class="lbl"><th class="text-left">$</th>${[1,2,3,4,5].map(y=>`<th class="text-right">Y${y}</th>`).join('')}</tr>
+      ${[['Revenue','rev'],['OpEx','opex'],['EBITDA','ebitda'],['Cash after debt svc','cash']].map(([l,k])=>`
+        <tr class="border-b border-line/40 ${k==='ebitda'?'font-bold text-amber':''}"><td>${l}</td>${yrs.map(y=>`<td class="text-right">${fmt$(y[k])}</td>`).join('')}</tr>`).join('')}</table></div></div>
+    <div><div class="lbl mb-1.5">Sensitivity (±20%)</div><canvas id="repTorn" class="w-full h-40"></canvas></div>
+    <div><div class="lbl mb-1.5">Risk register</div>
+      ${risks.length?`<table class="w-full"><tr class="lbl"><th class="text-left">Risk</th><th class="text-left">Mitigation</th><th>Sev.</th></tr>
+      ${risks.map(r=>`<tr class="border-b border-line/40 text-[12px]"><td>${r[1]}</td><td class="text-mut">${r[2]}</td>
+        <td class="text-center"><span class="tl ${r[3]>.65?'tl-r':'tl-y'}"></span></td></tr>`).join('')}</table>`:'<div class="text-[12px] text-mut">No elevated risks at current settings.</div>'}</div>
+    <div><div class="lbl mb-1.5">Three conditions that would flip the verdict</div>
+      <ol class="list-decimal ml-5 text-[12px] space-y-1">${cs.flips.map(f=>`<li>${f}</li>`).join('')}</ol></div>
+    <div><div class="lbl mb-1.5">Assumptions (all editable in-app)</div>
+      <div class="mono text-[10px] text-mut grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-0.5">
+        ${[['Discount rate',S.site.discountRate+'%'],['Debt',S.site.debtLVR+'% LVR @ '+S.site.debtRate+'% / '+S.site.debtTermYr+'yr'],['Growth','3%/yr'],['Yr-1 ramp','70→100% over 10 mo'],['Terminal (buy only)','property @3%/yr less debt balance'],['Order SLA',(S.site.slaHours||24)+' h · 50% pick-fee credit if late'],
+          ['Rackable share','62% of GFA'],['Target fill','78% of capacity'],['Base demand',S.site.targetOrders+' orders/day × market indices'],['Storage bench','$'+L.storageBench+'/pal/wk'],['Pick bench','$'+L.pickBench+'/order'],
+          ['Wage','$'+L.wage+'/hr ×'+L.unionLoad+' loading'],['Tariff','$'+L.powerTariff+'/kWh'],['Insurance base','0.45% of stock value + $4.2/m²'],['IRR hurdle','12%'],['DD weights','per checklist item'],['Seasonality','per-vertical monthly curves']]
+          .map(([k,v])=>`<span>${k}: <b class="text-[#5B5546]">${v}</b></span>`).join('')}</div></div>
+    <div class="hazard-thin"></div>
+    <div class="text-[10px] text-mut">Illustrative feasibility model generated by Warehouse Tycoon. All outputs derive from the visible, editable inputs above and stochastic simulation; they are not financial advice, a valuation, or an offer.</div>
+  </div>`;
+  tornadoChart(el('repTorn'),sens);
+}
+
+/* ── SCENARIOS ── */
+function renderScenarios(){
+  const saved=S.scenarios.filter(Boolean);
+  // metric rows: [label, formatter, raw accessor, direction ('hi' better / 'lo' better)]
+  const rows=[
+    ['Location',c=>esc(c.cfg.loc.name),null,null],
+    ['DD score',c=>c.kpi.dd+'/100',c=>c.kpi.dd,'hi'],
+    ['CapEx',c=>fmt$(c.kpi.capex),c=>c.kpi.capex,'lo'],
+    ['Revenue /yr',c=>fmt$(c.kpi.revYr),c=>c.kpi.revYr,'hi'],
+    ['EBITDA /yr',c=>fmt$(c.kpi.ebitdaYr),c=>c.kpi.ebitdaYr,'hi'],
+    ['Margin',c=>(c.kpi.margin*100).toFixed(1)+'%',c=>c.kpi.margin,'hi'],
+    ['NPV',c=>fmt$(c.kpi.npv),c=>c.kpi.npv,'hi'],
+    ['IRR',c=>isNaN(c.kpi.irr)?'n/a':(c.kpi.irr*100).toFixed(1)+'%',c=>isNaN(c.kpi.irr)?-1:c.kpi.irr,'hi'],
+    ['DSCR',c=>c.kpi.dscr===Infinity?'—':c.kpi.dscr.toFixed(2)+'×',c=>c.kpi.dscr===Infinity?99:c.kpi.dscr,'hi'],
+    ['Payback',c=>c.kpi.payback?c.kpi.payback+' mo':'>60',c=>c.kpi.payback||99,'lo'],
+    ['CPO',c=>fmt$(c.kpi.cpo),c=>c.kpi.cpo,'lo'],
+    ['Rev / m²',c=>fmt$(c.kpi.revM2),c=>c.kpi.revM2,'hi'],
+    ['Score / verdict',c=>`<b class="${c.kpi.verdict==='GO'?'text-ok':c.kpi.verdict==='CONDITIONAL'?'text-amber':'text-warn'}">${c.kpi.score} ${c.kpi.verdict}</b>`,c=>c.kpi.score,'hi'],
+  ];
+  function cellCls(row,sc){ // best = green, worst = red — only when 2+ saved and values actually differ
+    if(!row[3]||saved.length<2||!sc) return '';
+    const vals=saved.map(row[2]); if(Math.max(...vals)===Math.min(...vals)) return '';
+    const v=row[2](sc);
+    const best = row[3]==='hi'? Math.max(...vals):Math.min(...vals);
+    const worst= row[3]==='hi'? Math.min(...vals):Math.max(...vals);
+    return v===best?'text-ok font-bold':v===worst?'text-warn':'';
+  }
+  // config diff: only fields where the saved scenarios disagree
+  const cfgRows=[
+    ['Location',c=>c.loc.name],['Area',c=>(c.site.areaM2/1000)+'k m²'],['Tenure',c=>c.site.tenure],
+    ['Mix',c=>Object.entries(c.mix).filter(([k,v])=>v>0).map(([k,v])=>k+' '+v+'%').join(', ')||'—'],
+    ['Sprinkler',c=>c.dd.sprinkler],['Dock doors',c=>String(c.dd.dockDoors+(c.autom.extraDocks||0))],
+    ['Automation',c=>[c.autom.agv?c.autom.agv+' AGV':'',c.autom.sortation?'sortation':'',c.autom.conveyor?'conveyor':'',c.autom.solar?'solar':'',c.autom.slotting?'slotting':''].filter(Boolean).join(', ')||'—'],
+    ['Debt',c=>c.site.debtLVR+'% @ '+c.site.debtRate+'%'],['SLA',c=>(c.site.slaHours||24)+' h'],
+  ];
+  const diffs=cfgRows.filter(([l,fn])=> saved.length>=2 && new Set(saved.map(sc=>fn(sc.cfg))).size>1);
+  el('stage-scn').innerHTML=`
+    <div class="flex items-center justify-between flex-wrap gap-2 mb-3 max-w-3xl">
+      <div class="text-[12px] text-mut">Save the current location and configuration into a slot, then compare side by side — best per metric in green, worst in red.</div>
+      ${saved.length?`<button class="btn text-[11px]" onclick="exportAllScenarios()">⧉ Copy all as JSON</button>`:''}
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 max-w-3xl">${[0,1,2].map(i=>{const sc=S.scenarios[i];return `
+      <div class="card p-3">
+        <div class="lbl mb-1">Slot ${String.fromCharCode(65+i)}</div>
+        ${sc?`<div class="text-[12px] font-bold mb-0.5">${esc(sc.name)}</div><div class="lbl normal-case mb-2">saved ${sc.saved}</div>
+          <div class="flex gap-1.5"><button class="btn text-[11px] flex-1" onclick="loadScenario(${i})">Load</button>
+          <button class="btn btn-amber text-[11px] flex-1" onclick="snapshotScenario(${i})">Overwrite</button></div>
+          <button class="btn text-[11px] w-full mt-1.5" onclick="exportScenario(${i})">⧉ Copy JSON</button>`
+        :`<div class="text-[11px] text-mut mb-2">empty</div><button class="btn btn-amber text-[11px] w-full" onclick="snapshotScenario(${i})">Save current here</button>`}
+      </div>`}).join('')}</div>
+    ${saved.length?`<div class="card p-3 overflow-x-auto max-w-4xl mb-3"><table class="w-full mono num min-w-[420px]">
+      <tr class="lbl"><th class="text-left">Metric</th>${S.scenarios.map((sc,i)=>`<th class="text-right">${sc?String.fromCharCode(65+i):''}</th>`).join('')}</tr>
+      ${rows.map(row=>`<tr class="border-b border-line/40"><td class="text-mut">${row[0]}</td>
+        ${S.scenarios.map(sc=>`<td class="text-right ${sc?cellCls(row,sc):''}">${sc?row[1](sc):'—'}</td>`).join('')}</tr>`).join('')}</table></div>`:''}
+    ${diffs.length?`<div class="card p-3 overflow-x-auto max-w-4xl border-l-4 border-l-amber">
+      <div class="lbl mb-2">Configuration differences — what actually varies between these scenarios</div>
+      <table class="w-full mono min-w-[420px]"><tr class="lbl"><th class="text-left">Setting</th>${S.scenarios.map((sc,i)=>`<th class="text-left">${sc?String.fromCharCode(65+i):''}</th>`).join('')}</tr>
+      ${diffs.map(([l,fn])=>{ const vals=S.scenarios.map(sc=>sc?fn(sc.cfg):null);
+        const counts={}; vals.filter(v=>v!==null).forEach(v=>counts[v]=(counts[v]||0)+1);
+        return `<tr class="border-b border-line/40"><td class="text-mut">${l}</td>
+        ${vals.map(v=>`<td class="${v!==null&&counts[v]===1?'text-amber':''}">${v===null?'—':esc(v)}</td>`).join('')}</tr>`;}).join('')}</table></div>`
+    : saved.length>=2?`<div class="text-[11px] text-mut max-w-4xl">Configurations are identical — differences will highlight here in amber once scenarios diverge.</div>`:''}`;
+}
+
+/* ── CONTEXTUAL LEFT PANEL ── */
+function renderLeft(){
+  const p=el('leftPanel'); if(!p) return;
+  const H={
+    setup:()=>`
+      ${lp('Site configuration',`
+        ${lpNum('Gross floor area','m²',S.site.areaM2,'v=>setSite(\'areaM2\',v)',1000)}
+        <div class="lbl mt-2 mb-1">Tenure</div><div class="seg mono">
+          <button class="${S.site.tenure==='lease'?'on':''}" onclick="setSite('tenure','lease')">LEASE</button>
+          <button class="${S.site.tenure==='buy'?'on':''}" onclick="setSite('tenure','buy')">BUY LAND</button></div>
+        ${lpNum('Target market orders','ord/day',S.site.targetOrders,'v=>setSite(\'targetOrders\',v)',50)}`)}
+      ${lp('Derived capacity',`<div class="mono text-[11px] space-y-1">
+        <div class="flex justify-between"><span class="text-mut">Pallet positions</span><b class="num">${fmtN(D.palletCap)}</b></div>
+        <div class="flex justify-between"><span class="text-mut">Rack levels (max)</span><b class="num">${D.pen.maxLevels}</b></div>
+        <div class="flex justify-between"><span class="text-mut">Modeled orders/day</span><b class="num">${Math.round(D.baseOrders)}</b></div>
+        <div class="flex justify-between"><span class="text-mut">Blended storage</span><b class="num">${fmt$(D.storRate)}/pal/wk</b></div>
+        <div class="flex justify-between"><span class="text-mut">Blended pick fee</span><b class="num">${fmt$(D.pickFee)}/ord</b></div>
+        <div class="flex justify-between"><span class="text-mut">Required power</span><b class="num ${D.pen.powerShort?'text-warn':''}">${Math.round(D.reqKva)} kVA</b></div></div>`)}
+      ${lpApply()}`,
+    dd:()=>`${lp('How scoring works',`<div class="text-[11px] text-mut leading-relaxed">Each item carries a weight (1–5) and a scoring curve. Red items apply hard penalties — rack caps, locked verticals, blocked automation, occupancy stops — already live in the sim and the financials.</div>`)}
+      ${lp('Hard gates now active',`<div class="mono text-[10px] space-y-1">
+        ${S.dd.sprinkler!=='ESFR'?'<div class="text-warn">▸ Non-ESFR: racks ≤6 m; cold/DG/tyres locked</div>':''}
+        ${S.dd.courtDepth<32?'<div class="text-warn">▸ Court <32 m: turnaround +40%</div>':''}
+        ${D.pen.powerShort?'<div class="text-warn">▸ Power short: automation locked</div>':''}
+        ${!S.dd.gatehouse?'<div class="text-warn">▸ No gatehouse: arrival chaos +50%, shrink +0.2 pt</div>':''}
+        ${!D.pen.canOccupy?'<div class="text-warn blink">▸ OCCUPANCY BLOCKED</div>':''}
+        ${S.dd.sprinkler==='ESFR'&&S.dd.courtDepth>=32&&!D.pen.powerShort&&S.dd.gatehouse&&D.pen.canOccupy?'<div class="text-ok">none — site is clean</div>':''}</div>`)}
+      ${lpApply()}`,
+    sim:()=>`${selectedHit?inspector():lp('Inspector',`<div class="text-[11px] text-mut">Click any truck, worker, vehicle, rack module or zone in the world to inspect its live stats. Drag to pan · wheel to zoom.</div>`)}
+      ${lp('Staffing roster (heads/shift)',Object.keys(S.staff).map(k=>`
+        <div class="flex items-center gap-2 py-0.5"><span class="w-2 h-2 rounded-sm flex-none" style="background:${DEPT_COLORS[k]}"></span>
+        <span class="text-[11px] w-24 flex-none capitalize">${k}</span>
+        <input type="range" min="0" max="30" value="${S.staff[k]}" class="flex-1" oninput="setStaff('${k}',this.value);this.nextElementSibling.textContent=this.value">
+        <span class="num mono text-[11px] w-6 text-right">${S.staff[k]}</span></div>`).join('')
+        +`<div class="mono text-[10px] text-mut mt-2">Rostered today: <b>${SIM.rosterToday}</b> · absent: <b class="${SIM.absentToday>3?'text-warn':''}">${SIM.absentToday}</b> (labor idx ${S.loc.laborAvail}${S.dd.ptProx==='Far'?' + PT far':''})</div>`)}
+      ${lp('Automation & upgrades',`<div class="mono text-[11px] space-y-1">
+        ${[['AGV / AMR units',S.autom.agv||'—'],['Conveyor',S.autom.conveyor?'✓':'—'],['Sortation',S.autom.sortation?'✓':'—'],['Solar PPA',S.autom.solar?'✓':'—'],['Substation upgrade',S.autom.substation?'✓':'—'],['Extra docks',S.autom.extraDocks||'—'],['Slotting opt.',S.autom.slotting?'✓':'—']]
+          .map(([l,v])=>`<div class="flex justify-between"><span class="text-mut">${l}</span><b>${v}</b></div>`).join('')}
+        <div class="text-[10px] text-mut mt-1.5">Purchased via AI ADVISOR cards ${D.pen.powerShort?'<span class="text-warn">(power-locked)</span>':''}</div></div>`)}
+      ${lp('Stock by vertical (live pools)',Object.keys(D.shares).map(k=>{const v=VERTICALS[k];
+        const cap=Math.max(1,D.palletCap*D.shares[k]), fr=clamp((SIM.inv[k]||0)/cap,0,1);
+        return `<div class="flex items-center gap-2 py-0.5"><span class="w-2 h-2 rounded-sm flex-none" style="background:${v.color}"></span>
+          <span class="text-[10px] w-20 flex-none truncate">${v.name.split(' (')[0]}</span>
+          <div class="flex-1 h-1.5 bg-line rounded"><div class="h-1.5 rounded" style="width:${fr*100}%;background:${v.color}"></div></div>
+          <span class="num mono text-[10px] w-10 text-right ${fr<.15?'text-warn':''}">${fmtN(Math.round(SIM.inv[k]||0))}</span></div>`}).join(''))}
+      ${lp('Live flow',`<div class="mono text-[11px] space-y-1">
+        ${[['In staging',Math.round(SIM.staged)+' pallets'],['In racking',fmtN(Math.round(SIM.pallets))+' / '+fmtN(D.palletCap)],['Order backlog',Math.round(SIM.backlog)],['Pack queue',Math.round(SIM.packQ)],['SLA on-time (7d)',(slaOnTime()*100).toFixed(0)+'%'],['Trucks on site',SIM.trucks.filter(t=>t.state!=='depart'&&t.state!=='arrive').length],['Received today',Math.round(SIM.receivedToday)+' pal'],['Breakdowns',SIM.breakdowns]]
+          .map(([l,v])=>`<div class="flex justify-between"><span class="text-mut">${l}</span><b class="num">${v}</b></div>`).join('')}</div>`)}
+      ${lpApply()}`,
+    fin:()=>`${lp('Debt package',`
+        ${lpNum('LVR','%',S.site.debtLVR,'v=>setSite(\'debtLVR\',v)',5)}
+        ${lpNum('Interest rate','%',S.site.debtRate,'v=>setSite(\'debtRate\',v)',0.1)}
+        ${lpNum('Term','years',S.site.debtTermYr,'v=>setSite(\'debtTermYr\',v)',1)}
+        ${lpNum('Discount rate (NPV)','%',S.site.discountRate,'v=>setSite(\'discountRate\',v)',0.5)}
+        ${lpNum('Order SLA','hrs',S.site.slaHours||24,'v=>setSite(\'slaHours\',v)',1)}`)}
+      ${lp('Reading the numbers',`<div class="text-[11px] text-mut leading-relaxed">Run-rate uses the trailing 30 simulated days (or the static model before day 30). The 5-yr projection applies a 70→100% year-one ramp, 3% growth and your vertical seasonality curves. Every figure re-derives when any input changes.</div>`)}`,
+    adv:()=>`${lp('Watched thresholds',`<div class="mono text-[10px] space-y-1 text-mut">
+        <div>CPO > pick fee ×1.15 → AMR</div><div>Dock saturation > 85% → docks</div><div>Backlog>120 & util>85% → slotting</div>
+        <div>Energy share > 22% & solar idx > .6 → solar</div><div>kVA short → substation</div><div>>1.8k ord/day → sortation</div>
+        <div>Premium > $200k → insurance bundle</div><div>Backlog>300 & racks<30% → inbound stall</div></div>`)}`,
+    rep:()=>`${lp('Score weights',`<div class="mono text-[10px] space-y-1 text-mut">
+        <div>Site readiness (DD) — 25%</div><div>EBITDA margin — 20%</div><div>IRR vs hurdle — 20%</div>
+        <div>Climate & regulatory — 15%</div><div>Utilization — 10%</div><div>Labor market — 10%</div>
+        <div class="mt-1.5">GO ≥70 · CONDITIONAL 50–69 · NO-GO <50. Occupancy failures cap the score at 25.</div></div>`)}`,
+    scn:()=>`${lp('Workflow',`<div class="text-[11px] text-mut leading-relaxed">Configure a site → run it → save to a slot. Repeat for another location or mix, then compare. Loading a slot restores its full configuration and restarts the sim.</div>`)}`,
+  };
+  p.innerHTML=(H[S.tab]||H.setup)();
+}
+function lp(title,body){ return `<div class="card p-3"><div class="lbl mb-2 flex items-center gap-2"><span class="hazard-thin w-4 inline-block"></span>${title}</div>${body}</div>`; }
+function lpNum(lbl,unit,val,cb,step){ return `<label class="text-[11px] block mb-1.5"><span class="text-mut">${lbl}</span> <span class="lbl">${unit}</span>
+  <input type="number" value="${val}" step="${step}" onchange="(${cb})(+this.value)"></label>`; }
+function lpApply(){ return `<button class="btn btn-amber w-full mono text-[12px]" onclick="resetSim();setTab('sim')">▶ ${SIM.started?'RESTART':'START'} SIMULATION</button>
+  <div class="text-[10px] text-mut mt-1.5 text-center">re-seeds the world with current configuration</div>`; }
+function inspector(){
+  const h=selectedHit;
+  let title='',rows=[];
+  if(h.type==='worker'){ const w=h.ref; title=w.dept.charAt(0).toUpperCase()+w.dept.slice(1)+' operator';
+    rows=[['Department',w.dept],['Wage',fmt$(S.loc.wage*(w.dept==='forklift'?1:0)+ (w.dept==='forklift'?S.loc.forkPrem:0)+S.loc.wage)+'/hr'],['Fatigue',(h.ref.fatigue*100).toFixed(0)+'%'],['Status',SIM.backlog>200?'under pressure':'nominal']]; }
+  else if(h.type==='truck'){ const t=h.ref; title=(t.kind==='in'?'Inbound':'Outbound')+' truck #'+t.id;
+    rows=[['State',t.state],['Dock',t.dock>=0?'#'+(t.dock+1):'—'],[t.kind==='in'?'Pallets to unload':'Orders loaded',t.kind==='in'?t.pallets:Math.round(t.load)+'/'+t.capacity],['Driver',t.smoke?'smoking by the cab':'in cab'],['Linehaul',fmt$(t.kind==='in'?D.linehaulIn:D.linehaulOut)+'/pallet']]; }
+  else if(h.type==='vehicle'){ const v=h.ref; title=v.kind==='agv'?'AGV / AMR unit':'Forklift';
+    rows=[['Task',v.carrying?'moving pallet':'returning'],['Speed',v.kind==='agv'?'1.4 m/s':'2.2 m/s'],v.kind==='agv'?['Charge',(v.charge*100).toFixed(0)+'%']:['Operator','licensed (+'+fmt$(S.loc.forkPrem)+'/hr)']]; }
+  else if(h.type==='rack'){ const r=h.ref, v=VERTICALS[r.k], s=D.shares[r.k]||0;
+    rows=[['Mode',v.mode],['Share of mix',(s*100).toFixed(0)+'%'],['Pallets on floor',fmtN(Math.round(SIM.inv[r.k]||0))+' / '+fmtN(Math.round(D.palletCap*s))],['Storage rate',fmt$(S.loc.storageBench*v.storMult)+'/pal/wk'],['Value density',fmt$(v.valueDensity)+'/pal'],['Energy',v.energyInt+' kWh/m³/day']]; title=v.name; }
+  else if(h.type==='zone'){ const z=h.ref; title=z.name;
+    const extra={staging:[['Pallets staged',Math.round(SIM.staged)]],pack:[['Pack queue',Math.round(SIM.packQ)]],gate:[['Gatehouse',S.dd.gatehouse?'staffed':'MISSING — chaos penalty']],yardIn:[['Trucks queued',SIM.trucks.filter(t=>t.state==='queue').length]],charge:[['AGVs',S.autom.agv]]}[z.id]||[];
+    rows=[...extra,['Grid pos',z.gx+','+z.gy]]; }
+  return lp('◉ '+esc(title),`<div class="mono text-[11px] space-y-1">${rows.map(([l,v])=>`<div class="flex justify-between"><span class="text-mut">${l}</span><b class="num">${esc(String(v))}</b></div>`).join('')}
+    <button class="btn text-[10px] w-full mt-2" onclick="selectedHit=null;renderLeft()">Close inspector</button></div>`);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   §11b MINI-MAP — scaled-down iso overview with live viewport window.
+   Click anywhere on it to jump the camera.
+   ═══════════════════════════════════════════════════════════════════ */
+const MINI={w:158,h:112,s:1,ox:0,oy:0};
+function miniProject(){ // fit full world (incl. yard) into the mini canvas
+  const W=WORLD.W||34,Hh=WORLD.H||22;
+  const cs=[[-2,-2],[W+3,-2],[W+3,Hh+10],[-2,Hh+10]].map(([x,y])=>[isoX(x,y),isoY(x,y)]);
+  const xs=cs.map(c=>c[0]),ys=cs.map(c=>c[1]);
+  const mnx=Math.min(...xs),mxx=Math.max(...xs),mny=Math.min(...ys),mxy=Math.max(...ys);
+  MINI.s=Math.min((MINI.w-10)/(mxx-mnx),(MINI.h-10)/(mxy-mny));
+  MINI.ox=MINI.w/2-(mnx+mxx)/2*MINI.s; MINI.oy=MINI.h/2-(mny+mxy)/2*MINI.s;
+}
+function mPt(gx,gy){ return [isoX(gx,gy)*MINI.s+MINI.ox, isoY(gx,gy)*MINI.s+MINI.oy]; }
+function mQuad(ctx,gx,gy,w,h,fill){ ctx.fillStyle=fill; ctx.beginPath();
+  const p=[mPt(gx,gy),mPt(gx+w,gy),mPt(gx+w,gy+h),mPt(gx,gy+h)];
+  ctx.moveTo(p[0][0],p[0][1]); for(let i=1;i<4;i++) ctx.lineTo(p[i][0],p[i][1]); ctx.closePath(); ctx.fill(); }
+function drawMiniMap(){
+  const cv=el('miniMap'); if(!cv || cv.classList.contains('hidden')) return;
+  const dpr=window.devicePixelRatio||1;
+  if(cv.width!==MINI.w*dpr){ cv.width=MINI.w*dpr; cv.height=MINI.h*dpr; }
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,MINI.w,MINI.h);
+  miniProject();
+  const W=WORLD.W||34,Hh=WORLD.H||22;
+  mQuad(ctx,-1,-1,W+3,Hh+10,'#CFCaBB');                                   // yard slab
+  mQuad(ctx,0,0,W,Hh,'#B9B3A1');                                          // building
+  for(const z of WORLD.zones) mQuad(ctx,z.gx,z.gy,z.w,z.h,z.color+'CC');  // zones
+  ctx.fillStyle='#6E675A';                                                // rack rows
+  for(const r of WORLD.rackBlocks) mQuad(ctx,r.gx,r.gy,r.w,r.h,'#6E675A99');
+  for(const t of SIM.trucks){ const p=truckPos(t); if(!p) continue;       // trucks
+    const [x,y]=mPt(p.gx,p.gy); ctx.fillStyle=t.kind==='in'?'#3E7CA6':'#E07B3C';
+    ctx.beginPath(); ctx.arc(x,y,2,0,7); ctx.fill(); }
+  // viewport window: main canvas world-space rect → mini coords
+  const mc=el('simCanvas'); if(mc){ const r=mc.getBoundingClientRect();
+    const wx0=(-r.width/2-CAM.x)/CAM.z, wx1=(r.width/2-CAM.x)/CAM.z;
+    const wy0=(-r.height/2-CAM.y)/CAM.z, wy1=(r.height/2-CAM.y)/CAM.z;
+    ctx.strokeStyle='#C96442'; ctx.lineWidth=1.4;
+    ctx.strokeRect(wx0*MINI.s+MINI.ox, wy0*MINI.s+MINI.oy, (wx1-wx0)*MINI.s, (wy1-wy0)*MINI.s); }
+}
+(function(){ const cv=el('miniMap'); if(!cv) return;
+  cv.addEventListener('click',e=>{ const r=cv.getBoundingClientRect(); miniProject();
+    const wx=((e.clientX-r.left)-MINI.ox)/MINI.s, wy=((e.clientY-r.top)-MINI.oy)/MINI.s;
+    CAM.x=-wx*CAM.z; CAM.y=-wy*CAM.z; });
+})();
+
+/* ═══════════════════════════════════════════════════════════════════
+   §14 MAIN LOOP, SHORTCUTS, ONBOARDING, INIT
+   ═══════════════════════════════════════════════════════════════════ */
+let uiTimer=0, lastFrame=performance.now();
+function frame(now){
+  try{ frameBody(now); }catch(e){ if(!frame._warned){ frame._warned=true; console.error('frame',e); } }
+  requestAnimationFrame(frame);
+}
+function frameBody(now){
+  const dt=Math.min(100,now-lastFrame); lastFrame=now;
+  if(SIM.started && !SIM.paused){
+    // 1-s resolution: batch ticks per frame by speed; coarse economics at high speed
+    const target=SIM.speed*dt/1000*1;           // sim-seconds this frame at 1× = real-time-ish pacing ×60
+    let n=Math.round(SIM.speed*(dt/16.7));      // ≈ speed ticks per 60fps frame
+    n=Math.min(n, SIM.speed>=1000?4000:SIM.speed>=100?500:SIM.speed);
+    for(let i=0;i<n;i++) tick();
+  }
+  if(S.tab==='sim'){ renderWorld(); renderSimUi(); drawMiniMap();
+    if(SIM.started && !SIM.paused && SIM.trucks.some(t=>t.state==='toDock')) SND.beep(); }
+  uiTimer+=dt;
+  if(uiTimer>800){ uiTimer=0; kpiRibbon(); updateHeader();
+    if(S.tab==='sim') renderLeft();
+    if(S.tab==='adv') renderAdv();
+  }
+}
+document.addEventListener('keydown',e=>{
+  if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if(e.code==='Space'){ e.preventDefault(); SIM.paused=!SIM.paused; renderSimUi(); }
+  if(['1','2','3','4','5'].includes(e.key)){ SIM.speed=SIM.speeds[+e.key-1]; renderSimUi(); }
+});
+el('btnPause').onclick=()=>{ SIM.paused=!SIM.paused; renderSimUi(); };
+function openDrawer(){ const p=el('leftPanel'); p.classList.remove('hidden'); p.classList.add('drawer-open');
+  if(!el('drawerBg')){ const b=document.createElement('div'); b.id='drawerBg'; b.onclick=closeDrawer; document.body.appendChild(b); } }
+function closeDrawer(){ const p=el('leftPanel'); if(!p||!p.classList.contains('drawer-open')) return;
+  p.classList.remove('drawer-open'); p.classList.add('hidden'); const b=el('drawerBg'); if(b) b.remove(); }
+el('btnDrawer').onclick=()=>{ el('leftPanel').classList.contains('drawer-open')? closeDrawer() : openDrawer(); };
+el('tabbar').addEventListener('click',e=>{ const b=e.target.closest('.tab-btn'); if(b&&b.dataset.tab) setTab(b.dataset.tab); },true);
+el('seedToggle').onchange=()=>RNG.reset(); el('seedVal').onchange=()=>RNG.reset();
+
+/* onboarding (5 steps) */
+const OB=[
+ ['Pick your battlefield','Start in SETUP: choose one of 8 market presets — or open every parameter with Build My Location. Land, labor, linehaul distances, climate risk, tariffs, demand benchmarks: all of it drives the model.'],
+ ['Walk the site before you sign','DUE DILIGENCE scores '+DD_ITEMS.length+' real inspection items 0–100. Red items are not cosmetic: no ESFR caps your racks at 6 m and locks cold-chain; a shallow truck court adds 40% to every dock turn.'],
+ ['Choose what you store','Blend up to 12 product verticals with share sliders. Frozen food, DG chemicals and pharma will redraw the floor — freezer shells, cages, GOH rails — and reprice energy, insurance and rates.'],
+ ['Run the living floor','FLOOR SIM is a real discrete-event engine at 1-second resolution. Watch trucks queue at the gatehouse, racks fill, plumbobs sour under backlog. Space pauses; keys 1–5 set speed up to 1000× to fast-forward a year.'],
+ ['Get the verdict','FINANCIALS tracks NPV, IRR, DSCR and CPO live; the AI ADVISOR posts paybacked upgrade cards; INVESTOR REPORT compiles a printable committee paper with a GO / CONDITIONAL / NO-GO score — and the three conditions that would flip it.'],
+];
+let obI=0;
+function showOb(i){ obI=clamp(i,0,4); el('obStep').textContent=obI+1; el('obTitle').textContent=OB[obI][0]; el('obBody').textContent=OB[obI][1];
+  el('obPrev').style.visibility=obI===0?'hidden':'visible'; el('obNext').textContent=obI===4?'Start building →':'Next →';
+  el('onboard').classList.remove('hidden'); el('onboard').classList.add('flex'); }
+function hideOb(){ el('onboard').classList.add('hidden'); el('onboard').classList.remove('flex'); S.onboardSeen=true; }
+el('obNext').onclick=()=>obI===4?hideOb():showOb(obI+1);
+el('obPrev').onclick=()=>showOb(obI-1);
+el('obSkip').onclick=hideOb;
+el('btnHelp').onclick=()=>showOb(0);
+
+/* init */
+recompute();
+rollRoster();
+spawnWorld();
+resetSim();          // world is alive immediately; SETUP changes re-seed via ▶ button
+setTab('setup');
+kpiRibbon();
+bindCanvas();
+showOb(0);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
